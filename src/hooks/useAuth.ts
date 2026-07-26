@@ -15,27 +15,38 @@ export function useAuth() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Profilio užkrovimas iš Supabase DB
   const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
 
-      if (error) {
-        console.error('Klaida gaunant profilį:', error);
+    if (error) {
+      console.error('Klaida gaunant profilį:', error);
+      setProfile(null);
+      return;
+    }
+
+    if (data) {
+      setProfile(data);
+    } else {
+      const { data: created, error: insertError } = await supabase
+        .from('profiles')
+        .insert({ id: userId })
+        .select()
+        .maybeSingle();
+
+      if (insertError) {
+        console.error('Klaida kuriant profilį:', insertError);
+        setProfile(null);
       } else {
-        setProfile(data);
+        setProfile(created);
       }
-    } catch (err) {
-      console.error(err);
     }
   };
 
   useEffect(() => {
-    // 1. Patikriname dabartinę sesiją
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -44,11 +55,12 @@ export function useAuth() {
       setLoading(false);
     });
 
-    // 2. Klausomės sesijos pasikeitimų (prisijungimo / atsijungimo)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        (async () => {
+          await fetchProfile(session.user.id);
+        })();
       } else {
         setProfile(null);
       }
@@ -58,7 +70,6 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Prisijungimas su Google
   const signInWithGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -68,7 +79,6 @@ export function useAuth() {
     });
   };
 
-  // Atsijungimas
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);

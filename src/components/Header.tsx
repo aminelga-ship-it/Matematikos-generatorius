@@ -13,25 +13,29 @@ export const Header: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-4">
-        {user && profile ? (
+        {user ? (
           <div className="flex items-center gap-4 text-sm">
             {/* Limitų rodymas pagal tavo taisykles */}
-            <div className="bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-3 text-gray-700">
-              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                profile.plan === 'pro' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700'
-              }`}>
-                {profile.plan.toUpperCase()}
-              </span>
-              <span>
-                Užklausos: <strong>{profile.used_requests}</strong>/{profile.plan === 'pro' ? 100 : 3}
-              </span>
-              <span className="text-gray-300">|</span>
-              <span>
-                Užduotys: <strong>{profile.used_tasks}</strong>/{profile.plan === 'pro' ? 300 : 3}
-              </span>
-            </div>
+            {profile && (
+              <div className="bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-3 text-gray-700">
+                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                  profile.plan === 'pro' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700'
+                }`}>
+                  {profile.plan.toUpperCase()}
+                </span>
+                <span>
+                  Užklausos: <strong>{profile.used_requests}</strong>/{profile.plan === 'pro' ? 100 : 3}
+                </span>
+                <span className="text-gray-300">|</span>
+                <span>
+                  Užduotys: <strong>{profile.used_tasks}</strong>/{profile.plan === 'pro' ? 300 : 3}
+                </span>
+              </div>
+            )}
 
-            <span className="text-gray-600 hidden sm:inline">{profile.email}</span>
+            {profile?.email && (
+              <span className="text-gray-600 hidden sm:inline">{profile.email}</span>
+            )}
 
             <button
               onClick={signOut}
