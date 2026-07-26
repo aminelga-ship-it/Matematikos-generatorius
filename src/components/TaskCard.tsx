@@ -114,7 +114,9 @@ export function TaskCard({ task, index, showAnswers, showSolutions }: TaskCardPr
               <GeometryVisualizer config={task.diagram_config} />
             )}
               {/* Interaktyvus GeoGebra grafikas*/}
+            {Boolean(task.function_equation && task.function_equation.trim() !== '') && (
               <GeoGebraGraph equation={task.function_equation} />
+      )}
           </div>
         </div>
       </div>
