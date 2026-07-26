@@ -18,7 +18,6 @@ interface TaskRequest {
 
 interface DiagramConfig {
   type: string;
-  parameters: Record<string, number>;
   labels: Record<string, string>;
 }
 
