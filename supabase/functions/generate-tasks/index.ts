@@ -853,6 +853,7 @@ function fixTaskLatex(task: Task): Task {
     answer: fixLatex(task.answer),
     solution: fixLatex(task.solution),
     diagram_config: task.diagram_config,
+    function_equation: task.function_equation,
   };
 }
 
@@ -892,69 +893,37 @@ DRAUDŽIAMI laipsnių uždaviniai (per paprasti):
 }
 
 function buildDiagramSection(): string {
-  return `
-BRĖŽINYS (diagram_config laukas — tik geometrinėms figūroms):
-Kai užduotis vaizduoja geometrinę figūrą ar kampų santykius tiesėse, grąžink "diagram_config" lauką.
-SVG, HTML ar bet koks kitas kodas griežtai DRAUDŽIAMAS — tik struktūrizuoti duomenys.
+  Kai užduočiai reikalingas geometrinis brėžinys (withDiagram: true), PRIVALOMA grąžinti "diagram_config" objektą su figūros tipu ir reikšmių žymėjimais.
 
-Palaikomi tipai:
-• "triangle" — bendrasis trikampis
-  parameters: { a, b, c }  — kraštinių ilgiai (a=BC, b=CA, c=AB), VISADA SKAIČIAI
-  labels: { a: "5 cm", b: "?", c: "7 cm", vA: "A", vB: "B", vC: "C" }
-  — vA/vB/vC: viršūnių žymės (VISADA pridėk, kad brėžinys atitiktų sąlygą)
+GALIMI FIGŪRŲ TIPAI IR JŲ RAKTAI:
 
-• "right_triangle" — stačiakampis trikampis (status kampas C viršūnėje)
-  parameters: { a, b }  — statiniai; įstrižainė apskaičiuojama automatiškai
-  labels: { a: "3 cm", b: "4 cm", c: "?", vA: "A", vB: "B", vC: "C" }
-  — C yra status kampo viršūnė
+1. 2D FIGŪROS:
+- "KVADRATAS" arba "SQUARE": labels -> { "a": "kraštinė" }
+- "STAČIAKAMPIS" arba "RECTANGLE": labels -> { "a": "ilgis", "b": "plotis" }
+- "ROMBAS" arba "RHOMBUS": labels -> { "a": "kraštinė", "d1": "įstrižainė 1", "d2": "įstrižainė 2" }
+- "LYGIAGRETAINIS" arba "PARALLELOGRAM": labels -> { "a": "pagrindas", "b": "šoninė kraštinė", "h": "aukštinė" }
+- "TRAPECIJA" arba "TRAPEZOID": labels -> { "a": "viršutinis pagrindas", "b": "apatinis pagrindas", "h": "aukštinė" }
+- "STATUSIS_TRIKAMPIS" arba "RIGHT_TRIANGLE": labels -> { "a": "statinis 1", "b": "statinis 2", "c": "įžambinė" }
+- "TRIKAMPIS" arba "TRIANGLE": labels -> { "a": "pagrindas", "b": "šoninė kraštinė", "h": "aukštinė" }
+- "APSKRITIMAS" arba "CIRCLE": labels -> { "r": "spindulys", "d": "skersmuo" }
 
-• "rectangle" — stačiakampis
-  parameters: { w, h }
-  labels: { w: "8 cm", h: "5 cm" }
+2. 3D FIGŪROS:
+- "KUBAS" arba "CUBE": labels -> { "a": "briauna" }
+- "GRETASIENIS" arba "CUBOID": labels -> { "a": "ilgis", "b": "plotis", "h": "aukštis" }
+- "TRIKAMPE_PIRAMIDE" arba "TRIANGULAR_PYRAMID": labels -> { "a": "pagrindo kraštinė", "h": "piramidės aukštinė", "l": "apotema" }
+- "KETURKAMPE_PIRAMIDE" arba "SQUARE_PYRAMID": labels -> { "a": "pagrindo kraštinė", "h": "piramidės aukštinė", "l": "apotema" }
+- "KŪGIS" arba "CONE": labels -> { "r": "spindulys", "h": "aukštinė", "l": "sudaromoji" }
+- "RITINYS" arba "CYLINDER": labels -> { "r": "spindulys", "h": "aukštinė" }
 
-• "square" — kvadratas
-  parameters: { s }
-  labels: { s: "6 cm" }
-
-• "circle" — apskritimas
-  parameters: { r }
-  labels: { r: "4 cm" }
-
-• "parallelogram" — lygiagretainis
-  parameters: { a, b, angle }  — pagrindas, šonas, ūmus kampas laipsniais
-  labels: { a: "7 cm", b: "4 cm", angle: "60°" }
-
-• "trapezoid" — lygiašonė trapecija
-  parameters: { a, b, h }  — viršutinė kraštinė, apatinė kraštinė, aukštis
-  labels: { a: "4 cm", b: "8 cm", h: "?" }
-
-• "parallel_lines" — dvi lygiagrečios tiesės su kirstine
-  parameters: { angle }  — ūmus kirstinės kampas su lygiagrečiomis laipsniais (tarp 20 ir 80)
-  labels: — žymėk TIK tuos kampus, kurie svarbūs uždavinyje; kiti paliekami tuštii.
-    Pozicijos kiekvienoje sankirtoje (pagal laikrodį nuo viršaus kairės):
-    Viršutinė sankirta: t1=viršuje kairėje, t2=viršuje dešinėje, t3=apačioje dešinėje, t4=apačioje kairėje
-    Apatinė sankirta:   b1=viršuje kairėje, b2=viršuje dešinėje, b3=apačioje dešinėje, b4=apačioje kairėje
-  Kampų ryšiai (angle=α laipsniais):
-    t2=t4=b2=b4=α° (lygiagretūs ir kryžminiai kampai = α)
-    t1=t3=b1=b3=(180-α)° (papildomieji)
-  Pvz. "Jei t2=55°, rask b4":  labels: { "t2": "55°", "b4": "?" }
-  Pvz. "Kryžminiai kampai": labels: { "t2": "α", "t4": "α", "b2": "α", "b4": "α" }
-
-SVARBU dėl parameters: įrašyk SKAITINES REIKŠMES visada — net jei dydis nežinomas,
-naudok geometriškai teisingą apytikslę reikšmę, o labels laukelyje rašyk "?".
-Jei užduotis nėra geometrinė figūra — NEpridėk diagram_config lauko.
-
-PRIVALOMOSIOS BRĖŽINIO TAISYKLĖS:
-1. KLAUSTUKAS „?" — dedamas TIK ant tos kraštinės, kampo ar objekto, kurį sąlyga prašo surasti.
-   DRAUDŽIAMA dėti „?" ant bet kurio kito elemento.
-   Pavyzdys: jei klausiama „rask kraštinę b", tai labels = { "b": "?" }, o ne { "a": "?", "b": "?" }.
-
-2. ATSAKYMAS BRĖŽINYJE — GRIEŽTAI DRAUDŽIAMA. Labels laukelyje NIEKADA nerašyk apskaičiuoto atsakymo
-   (pvz. "12 cm", "45°"). Elementas, kurį reikia rasti, visada žymimas tik „?".
-
-3. DUOTOS REIKŠMĖS — visos sąlygoje nurodytos žinomos reikšmės (kraštinės, kampai, aukščiai ir pan.)
-   PRIVALO būti pažymėtos labels laukelyje atitinkamose pozicijose.
-   Pavyzdys: jei sąlyga „trikampyje AB = 5 cm, BC = 7 cm, rask AC", tai labels = { "c": "5 cm", "a": "7 cm", "b": "?" }.`;
+PAVYZDYS JSON STRUKTŪROS:
+"diagram_config": {
+  "type": "KETURKAMPE_PIRAMIDE",
+  "labels": {
+    "a": "6 cm",
+    "h": "8 cm",
+    "l": "10 cm"
+  }
+}
 }
 
 function buildSystemPrompt(grade: number, difficulty: string, taskCount: number, withDiagram: boolean, withGraph: boolean): string {
