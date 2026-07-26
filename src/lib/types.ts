@@ -10,7 +10,6 @@ export interface DiagramConfig {
     | "parallelogram"
     | "trapezoid"
     | "parallel_lines";
-  parameters: Record<string, number>;
   labels: Record<string, string>;
 }
 
