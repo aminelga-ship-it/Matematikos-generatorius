@@ -956,29 +956,56 @@ ${DIAGRAM_TYPES.map((t) => `- "${t}"`).join("\n")}
 
 Draudžiama naudoti bet kokį kitą type pavadinimą. Jei užduotis nereikalauja brėžinio — diagram_config laukas neįtraukiamas.
 
-LABELS RAKTAI PAGAL FIGŪROS TIPĄ:
-- SQUARE: { "a": "kraštinė" }
-- RECTANGLE: { "a": "ilgis", "b": "plotis" }
-- RHOMBUS: { "a": "kraštinė", "d1": "įstrižainė 1", "d2": "įstrižainė 2" }
-- PARALLELOGRAM: { "a": "pagrindas", "b": "šoninė kraštinė", "h": "aukštinė" }
-- TRAPEZOID: { "a": "viršutinis pagrindas", "b": "apatinis pagrindas", "h": "aukštinė" }
-- RIGHT_TRIANGLE: { "a": "statinis 1", "b": "statinis 2", "c": "įžambinė" }
-- TRIANGLE: { "a": "pagrindas", "b": "šoninė kraštinė", "h": "aukštinė" }
-- CIRCLE: { "r": "spindulys", "d": "skersmuo" }
-- CUBE: { "a": "briauna" }
-- CUBOID: { "a": "ilgis", "b": "plotis", "h": "aukštis" }
-- SQUARE_PYRAMID: { "a": "pagrindo kraštinė", "h": "piramidės aukštinė", "l": "apotema" }
-- TRIANGULAR_PYRAMID: { "a": "pagrindo kraštinė", "h": "piramidės aukštinė", "l": "apotema" }
-- CONE: { "r": "spindulys", "h": "aukštinė", "l": "sudaromoji" }
-- CYLINDER: { "r": "spindulys", "h": "aukštinė" }
+GALIMI LABELS RAKTAI PAGAL FIGŪROS TIPĄ (naudok TIK tuos, kurie paminėti užduoties tekste):
+- SQUARE: a
+- RECTANGLE: a, b
+- RHOMBUS: a, d1, d2
+- PARALLELOGRAM: a, b, h
+- TRAPEZOID: a, b, h
+- RIGHT_TRIANGLE: a, b, c
+- TRIANGLE: a, b, c, h
+- CIRCLE: r, d
+- CUBE: a
+- CUBOID: a, b, h
+- SQUARE_PYRAMID: a, h, l
+- TRIANGULAR_PYRAMID: a, h, l
+- CONE: r, h, l
+- CYLINDER: r, h
 
-PAVYZDYS JSON STRUKTŪROS:
+SVARBIAUSIA TAISYKLĖ — LABELS TURI ATITIKTI UŽDUOTIES TEKSTĄ:
+1. Į labels įtrauk TIK tuos raktus, kurie yra paminėti užduoties tekste.
+2. NIEKADA nepridėk papildomų labels, kurie nepaminėti tekste.
+   Pvz., jei tekste minima tik a ir h → labels = { "a": "...", "h": "..." }
+   Jei tekste minima tik r → labels = { "r": "..." }
+   Jei tekste minima a, b, c → labels = { "a": "...", "b": "...", "c": "..." }
+3. Perimetras, plotas, tūris ar kiti apskaičiuoti dydžiai, jei duoti sąlygoje, brėžinyje NEATVAIZDUOJAMI — tik matmenys (kraštinės, aukštinės, spinduliai ir pan.).
+4. Jei dydis nežinomas (reikia rasti), jo reikšmę nurodyk kaip "?".
+5. Draudžiama generuoti labels su raktais "d1", "d2", "l", "r", "h", "a" ar bet kuriais kitais, jei jie nepaminėti užduoties tekste.
+
+PAVYZDYS 1 (piramidė, tekste minima a ir h):
 "diagram_config": {
   "type": "SQUARE_PYRAMID",
   "labels": {
     "a": "6 cm",
-    "h": "8 cm",
-    "l": "10 cm"
+    "h": "8 cm"
+  }
+}
+
+PAVYZDYS 2 (apskritimas, tekste minima tik r):
+"diagram_config": {
+  "type": "CIRCLE",
+  "labels": {
+    "r": "5 cm"
+  }
+}
+
+PAVYZDYS 3 (trikampis, tekste minima a, b, c, c nežinomas):
+"diagram_config": {
+  "type": "TRIANGLE",
+  "labels": {
+    "a": "5 cm",
+    "b": "4 cm",
+    "c": "?"
   }
 }`;
 }
