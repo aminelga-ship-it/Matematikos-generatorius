@@ -1,23 +1,50 @@
 import React from 'react';
 import { useAuth } from '../hooks/useAuth';
 
+function getFirstName(fullName: string | null, email: string | null): string {
+  if (fullName && fullName.trim()) {
+    return fullName.trim().split(/\s+/)[0];
+  }
+  if (email) {
+    const localPart = email.split('@')[0];
+    const cleaned = localPart
+      .replace(/[._0-9]/g, ' ')
+      .trim()
+      .split(/\s+/)[0];
+    if (cleaned) {
+      return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+    }
+    return localPart;
+  }
+  return 'Naudotojau';
+}
+
 export const Header: React.FC = () => {
   const { user, profile, signInWithGoogle, signOut, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
+        <span className="text-xl font-bold text-indigo-600">MatematikaAI</span>
+        <div className="w-32 h-8 bg-gray-100 rounded animate-pulse" />
+      </header>
+    );
+  }
+
+  const isLoggedIn = !!user;
+  const firstName = getFirstName(profile?.full_name ?? null, profile?.email ?? user?.email ?? null);
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
+    <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm sticky top-0 z-50">
       <div className="flex items-center gap-2">
         <span className="text-xl font-bold text-indigo-600">MatematikaAI</span>
       </div>
 
       <div className="flex items-center gap-4">
-        {user ? (
+        {isLoggedIn ? (
           <div className="flex items-center gap-4 text-sm">
-            {/* Limitų rodymas pagal tavo taisykles */}
             {profile && (
-              <div className="bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-3 text-gray-700">
+              <div className="hidden md:flex items-center gap-3 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg text-gray-700">
                 <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
                   profile.plan === 'pro' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700'
                 }`}>
@@ -33,9 +60,9 @@ export const Header: React.FC = () => {
               </div>
             )}
 
-            {profile?.email && (
-              <span className="text-gray-600 hidden sm:inline">{profile.email}</span>
-            )}
+            <span className="text-gray-700 font-medium">
+              Sveikas, <span className="text-indigo-600 font-semibold">{firstName}</span>!
+            </span>
 
             <button
               onClick={signOut}

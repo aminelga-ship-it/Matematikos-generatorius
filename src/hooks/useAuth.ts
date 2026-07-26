@@ -5,6 +5,7 @@ import type { User } from '@supabase/supabase-js';
 export interface Profile {
   id: string;
   email: string | null;
+  full_name: string | null;
   plan: 'free' | 'pro';
   used_requests: number;
   used_tasks: number;
@@ -47,7 +48,10 @@ export function useAuth() {
   };
 
   useEffect(() => {
+    let active = true;
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!active) return;
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
@@ -67,7 +71,10 @@ export function useAuth() {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signInWithGoogle = async () => {
@@ -81,6 +88,7 @@ export function useAuth() {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setUser(null);
     setProfile(null);
   };
 
