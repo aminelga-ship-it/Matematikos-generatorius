@@ -77,8 +77,6 @@ export default function App() {
     setTasks(null);
     setError(null);
   }, []);
-
-  return (
     return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Nauja viršutinė navigacijos juosta su Auth, limitais ir logotipu */}
