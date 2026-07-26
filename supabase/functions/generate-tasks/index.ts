@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1124,12 +1125,63 @@ function buildImageUserContent(taskCount: number, prompt: string, imageBase64: s
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
+  if (req.method === "OPTIONS")
+  const authHeader = req.headers.get('Authorization');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+    // Klientas vartotojo tapatybei nustatyti
+    const supabaseUserClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader ?? '' } },
+    });
+
+    // Admin klientas profilio limitams atnaujinti
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Patikriname vartotoją
+    const { data: { user } } = await supabaseUserClient.auth.getUser();
+
+    let userProfile = null;
+    if (user) {
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      userProfile = profile;
+    }{
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
     const { grade, taskCount, prompt, difficulty, imageBase64, withDiagram, withGraph }: TaskRequest = await req.json();
+    // Patikriname limitus
+if (userProfile) {
+  const maxRequests = userProfile.plan === 'pro' ? 100 : 3;
+  const maxTasks = userProfile.plan === 'pro' ? 300 : 3;
+
+  if (userProfile.used_requests >= maxRequests) {
+    return new Response(
+      JSON.stringify({ error: 'Viršijote leistiną užklausų limitą. Atnaujinkite planą į PRO!' }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (userProfile.used_tasks + taskCount > maxTasks) {
+    return new Response(
+      JSON.stringify({ error: `Viršytumėte leistiną užduočių limitą (${userProfile.used_tasks}/${maxTasks}).` }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+} else {
+  if (taskCount > 3) {
+    return new Response(
+      JSON.stringify({ error: 'Svečio režimu galite generuoti ne daugiau nei 3 užduotis vienu metu.' }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
 
     if (!grade || grade < 1 || grade > 12) {
       return new Response(
@@ -1229,7 +1281,16 @@ Deno.serve(async (req: Request) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
+// Padidiname suvartotų užklausų ir užduočių skaičių duombazėje
+    if (userProfile && user) {
+      await supabaseAdmin
+        .from('profiles')
+        .update({
+          used_requests: userProfile.used_requests + 1,
+          used_tasks: userProfile.used_tasks + taskCount,
+        })
+        .eq('id', user.id);
+    }
     return new Response(
       JSON.stringify({ tasks }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
