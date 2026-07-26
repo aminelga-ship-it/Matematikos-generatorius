@@ -1,3 +1,4 @@
+import { Header } from './components/Header';
 import React, { useState, useEffect, useCallback } from "react";
 import { Calculator, AlertCircle, Sparkles } from "lucide-react";
 import { GenerateForm } from "./components/GenerateForm";
@@ -21,7 +22,7 @@ export default function App() {
   const [showAnswers, setShowAnswers] = useState(false);
   const [showSolutions, setShowSolutions] = useState(false);
   const [sessions, setSessions] = useState<MathSession[]>([]);
-  const [currentGrade, setCurrentGrade] = useState(5);
+  const [currentGrade, setCurrentGrade] = useState(7);
 
   useEffect(() => {
     getRecentSessions().then(setSessions);
@@ -78,24 +79,12 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-100">
-        <div className="max-w-5xl mx-auto px-6 py-5 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-200">
-            <Calculator size={20} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-800 leading-none">MatematikaAI</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Matematikos užduočių generatorius</p>
-          </div>
-          <div className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-full">
-            <Sparkles size={13} className="text-blue-500" />
-            <span className="text-xs font-medium text-blue-600">Lietuvos moksleiviams</span>
-          </div>
-        </div>
-      </header>
+    return (
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      {/* Nauja viršutinė navigacijos juosta su Auth, limitais ir logotipu */}
+      <Header />
 
-      <main className="max-w-5xl mx-auto px-6 py-10">
+      <main className="max-w-5xl mx-auto px-6 py-10 flex-1 w-full">
         {tasks ? (
           <TasksView
             tasks={tasks}
@@ -112,7 +101,7 @@ export default function App() {
             <div className="lg:col-span-2 space-y-6">
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold text-slate-800 leading-tight">
-                  Generuok matematikos<br />
+                  Generuok matematikos <br />
                   <span className="text-blue-600">užduotis akimirksniu</span>
                 </h2>
                 <p className="text-slate-500 text-base">
@@ -136,7 +125,11 @@ export default function App() {
                 withDiagram={withDiagram}
                 withGraph={withGraph}
                 loading={loading}
-                onGradeChange={(v) => { setGrade(v); if (v < 7) setWithDiagram(false); if (v < 9) setWithGraph(false); }}
+                onGradeChange={(v) => {
+                  setGrade(v);
+                  if (v < 7) setWithDiagram(false);
+                  if (v < 9) setWithGraph(false);
+                }}
                 onTaskCountChange={setTaskCount}
                 onPromptChange={setPrompt}
                 onDifficultyChange={setDifficulty}
@@ -146,8 +139,10 @@ export default function App() {
                 onSubmit={handleGenerate}
               />
             </div>
-            <div className="space-y-6">
-              <HistoryPanel sessions={sessions} onSelect={handleSelectSession} />
+
+            {/* Dešinė pusė: istorija / pavyzdžiai */}
+            <div>
+              {/* Istorijos arba pavyzdžių komponentas */}
             </div>
           </div>
         )}
