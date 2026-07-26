@@ -853,7 +853,6 @@ function fixTaskLatex(task: Task): Task {
     answer: fixLatex(task.answer),
     solution: fixLatex(task.solution),
     diagram_config: task.diagram_config,
-    function_equation: task.function_equation,
   };
 }
 
