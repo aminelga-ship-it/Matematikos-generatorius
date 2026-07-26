@@ -145,7 +145,7 @@ export const GeometryVisualizer: React.FC<Props> = ({ config }) => {
         )}
 
         {/* 11. KETURKAMPE PIRAMIDE */}
-        {(shape === 'SQUARE_PYRAMID' || shape === 'KETURKAMPE_PIRAMIDE') && (
+        {(shape === 'SQUARE_PYRAMID' || shape === 'KETURKAMPE_PIRAMIDE' || shape === 'KETURKAMPĖ PIRAMIDĖ') && (
           <g>
             {/* Pagrindo nematomi kraštai */}
             <polygon points="60,150 140,130 220,150 140,180" className="fill-slate-50/30 stroke-slate-800 stroke-2" />
