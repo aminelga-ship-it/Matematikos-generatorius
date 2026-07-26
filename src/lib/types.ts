@@ -1,15 +1,14 @@
 export type Difficulty = "lengvos" | "vidutinės" | "sunkios";
 
+export type DiagramType =
+  | "SQUARE" | "RECTANGLE" | "RHOMBUS" | "PARALLELOGRAM" | "TRAPEZOID"
+  | "RIGHT_TRIANGLE" | "TRIANGLE" | "CIRCLE"
+  | "CUBE" | "CUBOID" | "SQUARE_PYRAMID" | "TRIANGULAR_PYRAMID"
+  | "CONE" | "CYLINDER";
+
 export interface DiagramConfig {
-  type:
-    | "triangle"
-    | "right_triangle"
-    | "rectangle"
-    | "square"
-    | "circle"
-    | "parallelogram"
-    | "trapezoid"
-    | "parallel_lines";
+  type: DiagramType;
+  parameters?: Record<string, number>;
   labels: Record<string, string>;
 }
 

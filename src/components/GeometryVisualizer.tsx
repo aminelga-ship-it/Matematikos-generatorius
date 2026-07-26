@@ -1,13 +1,24 @@
 import React from 'react';
-import type { DiagramConfig } from '../lib/types';
+import type { DiagramConfig, DiagramType } from '../lib/types';
 
 interface Props {
   config: DiagramConfig;
 }
 
+const VALID_TYPES: DiagramType[] = [
+  'SQUARE', 'RECTANGLE', 'RHOMBUS', 'PARALLELOGRAM', 'TRAPEZOID',
+  'RIGHT_TRIANGLE', 'TRIANGLE', 'CIRCLE',
+  'CUBE', 'CUBOID', 'SQUARE_PYRAMID', 'TRIANGULAR_PYRAMID',
+  'CONE', 'CYLINDER',
+];
+
 export const GeometryVisualizer: React.FC<Props> = ({ config }) => {
-  const shape = config.type?.toUpperCase() || '';
+  const shape = (config.type ?? '').toUpperCase().trim() as DiagramType;
   const labels = config.labels || {};
+
+  if (!VALID_TYPES.includes(shape)) {
+    console.log(`Unknown diagram type: ${config.type}`);
+  }
 
   return (
     <div className="flex flex-col items-center justify-center p-4 bg-white rounded-lg border border-gray-200 my-4 shadow-sm select-none">

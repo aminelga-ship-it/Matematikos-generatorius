@@ -16,8 +16,14 @@ interface TaskRequest {
   withGraph?: boolean;
 }
 
+type DiagramType =
+  | "SQUARE" | "RECTANGLE" | "RHOMBUS" | "PARALLELOGRAM" | "TRAPEZOID"
+  | "RIGHT_TRIANGLE" | "TRIANGLE" | "CIRCLE"
+  | "CUBE" | "CUBOID" | "SQUARE_PYRAMID" | "TRIANGULAR_PYRAMID"
+  | "CONE" | "CYLINDER";
+
 interface DiagramConfig {
-  type: string;
+  type: DiagramType;
   labels: Record<string, string>;
 }
 
@@ -847,13 +853,21 @@ function fixLatex(text: string): string {
 }
 
 function fixTaskLatex(task: Task): Task {
-  return {
+  const fixed: Task = {
     question: fixLatex(task.question),
     answer: fixLatex(task.answer),
     solution: fixLatex(task.solution),
     diagram_config: task.diagram_config,
     function_equation: task.function_equation,
   };
+  if (fixed.diagram_config?.type) {
+    const normalized = normalizeDiagramType(fixed.diagram_config.type);
+    if (!normalized) {
+      console.log(`Unknown diagram type: ${fixed.diagram_config.type}`);
+    }
+    fixed.diagram_config = { ...fixed.diagram_config, type: normalized ?? fixed.diagram_config.type };
+  }
+  return fixed;
 }
 
 function buildGradeConstraints(grade: number): string {
@@ -891,38 +905,82 @@ DRAUDŽIAMI laipsnių uždaviniai (per paprasti):
   return "";
 }
 
+const DIAGRAM_TYPES = [
+  "SQUARE", "RECTANGLE", "RHOMBUS", "PARALLELOGRAM", "TRAPEZOID",
+  "RIGHT_TRIANGLE", "TRIANGLE", "CIRCLE",
+  "CUBE", "CUBOID", "SQUARE_PYRAMID", "TRIANGULAR_PYRAMID",
+  "CONE", "CYLINDER",
+] as const;
+
+const DIAGRAM_TYPE_ALIASES: Record<string, string> = {
+  KVADRATAS: "SQUARE",
+  "STAČIAKAMPIS": "RECTANGLE",
+  STACIAKAMPIS: "RECTANGLE",
+  ROMBAS: "RHOMBUS",
+  LYGIAGRETAINIS: "PARALLELOGRAM",
+  TRAPECIJA: "TRAPEZOID",
+  "STATUSIS_TRIKAMPIS": "RIGHT_TRIANGLE",
+  STATUSIS_TRIKAMPIS: "RIGHT_TRIANGLE",
+  TRIKAMPIS: "TRIANGLE",
+  ISOSCELES_TRIANGLE: "TRIANGLE",
+  APSKRITIMAS: "CIRCLE",
+  KUBAS: "CUBE",
+  GRETASIENIS: "CUBOID",
+  "STACIAKAMPIS_GRETASIENIS": "CUBOID",
+  "STAČIAKAMPIS_GRETASIENIS": "CUBOID",
+  "KETURKAMPE_PIRAMIDE": "SQUARE_PYRAMID",
+  "KETURKAMPĖ_PIRAMIDĖ": "SQUARE_PYRAMID",
+  KETURKAMPE_PIRAMIDE: "SQUARE_PYRAMID",
+  "KETURKAMPIS": "SQUARE_PYRAMID",
+  "TRIKAMPE_PIRAMIDE": "TRIANGULAR_PYRAMID",
+  "TRIKAMPĖ_PIRAMIDĖ": "TRIANGULAR_PYRAMID",
+  TRIKAMPE_PIRAMIDE: "TRIANGULAR_PYRAMID",
+  "KŪGIS": "CONE",
+  KUGIS: "CONE",
+  RITINYS: "CYLINDER",
+};
+
+function normalizeDiagramType(raw: string): string | null {
+  const upper = raw.toUpperCase().trim();
+  if ((DIAGRAM_TYPES as readonly string[]).includes(upper)) return upper;
+  if (DIAGRAM_TYPE_ALIASES[upper]) return DIAGRAM_TYPE_ALIASES[upper];
+  return null;
+}
+
 function buildDiagramSection(): string {
-  Kai užduočiai reikalingas geometrinis brėžinys (withDiagram: true), PRIVALOMA grąžinti "diagram_config" objektą su figūros tipu ir reikšmių žymėjimais.
+  return `GEOMETRINIS BRĖŽINYS (withDiagram: true):
+Kai užduočiai reikalingas geometrinis brėžinys, PRIVALOMA grąžinti "diagram_config" objektą su figūros tipu ir reikšmių žymėjimais.
 
-GALIMI FIGŪRŲ TIPAI IR JŲ RAKTAI:
+DIAGRAM_CONFIG.TYPE TURI BŪTI TIK VIENA IŠ ŠIŲ REIKŠMIŲ (didžiosiomis raidėmis, be lietuviškų pavadinimų):
+${DIAGRAM_TYPES.map((t) => `- "${t}"`).join("\n")}
 
-1. 2D FIGŪROS:
-- "KVADRATAS" arba "SQUARE": labels -> { "a": "kraštinė" }
-- "STAČIAKAMPIS" arba "RECTANGLE": labels -> { "a": "ilgis", "b": "plotis" }
-- "ROMBAS" arba "RHOMBUS": labels -> { "a": "kraštinė", "d1": "įstrižainė 1", "d2": "įstrižainė 2" }
-- "LYGIAGRETAINIS" arba "PARALLELOGRAM": labels -> { "a": "pagrindas", "b": "šoninė kraštinė", "h": "aukštinė" }
-- "TRAPECIJA" arba "TRAPEZOID": labels -> { "a": "viršutinis pagrindas", "b": "apatinis pagrindas", "h": "aukštinė" }
-- "STATUSIS_TRIKAMPIS" arba "RIGHT_TRIANGLE": labels -> { "a": "statinis 1", "b": "statinis 2", "c": "įžambinė" }
-- "TRIKAMPIS" arba "TRIANGLE": labels -> { "a": "pagrindas", "b": "šoninė kraštinė", "h": "aukštinė" }
-- "APSKRITIMAS" arba "CIRCLE": labels -> { "r": "spindulys", "d": "skersmuo" }
+Draudžiama naudoti bet kokį kitą type pavadinimą. Jei užduotis nereikalauja brėžinio — diagram_config laukas neįtraukiamas.
 
-2. 3D FIGŪROS:
-- "KUBAS" arba "CUBE": labels -> { "a": "briauna" }
-- "GRETASIENIS" arba "CUBOID": labels -> { "a": "ilgis", "b": "plotis", "h": "aukštis" }
-- "TRIKAMPE_PIRAMIDE" arba "TRIANGULAR_PYRAMID": labels -> { "a": "pagrindo kraštinė", "h": "piramidės aukštinė", "l": "apotema" }
-- "KETURKAMPE_PIRAMIDE" arba "SQUARE_PYRAMID": labels -> { "a": "pagrindo kraštinė", "h": "piramidės aukštinė", "l": "apotema" }
-- "KŪGIS" arba "CONE": labels -> { "r": "spindulys", "h": "aukštinė", "l": "sudaromoji" }
-- "RITINYS" arba "CYLINDER": labels -> { "r": "spindulys", "h": "aukštinė" }
+LABELS RAKTAI PAGAL FIGŪROS TIPĄ:
+- SQUARE: { "a": "kraštinė" }
+- RECTANGLE: { "a": "ilgis", "b": "plotis" }
+- RHOMBUS: { "a": "kraštinė", "d1": "įstrižainė 1", "d2": "įstrižainė 2" }
+- PARALLELOGRAM: { "a": "pagrindas", "b": "šoninė kraštinė", "h": "aukštinė" }
+- TRAPEZOID: { "a": "viršutinis pagrindas", "b": "apatinis pagrindas", "h": "aukštinė" }
+- RIGHT_TRIANGLE: { "a": "statinis 1", "b": "statinis 2", "c": "įžambinė" }
+- TRIANGLE: { "a": "pagrindas", "b": "šoninė kraštinė", "h": "aukštinė" }
+- CIRCLE: { "r": "spindulys", "d": "skersmuo" }
+- CUBE: { "a": "briauna" }
+- CUBOID: { "a": "ilgis", "b": "plotis", "h": "aukštis" }
+- SQUARE_PYRAMID: { "a": "pagrindo kraštinė", "h": "piramidės aukštinė", "l": "apotema" }
+- TRIANGULAR_PYRAMID: { "a": "pagrindo kraštinė", "h": "piramidės aukštinė", "l": "apotema" }
+- CONE: { "r": "spindulys", "h": "aukštinė", "l": "sudaromoji" }
+- CYLINDER: { "r": "spindulys", "h": "aukštinė" }
 
 PAVYZDYS JSON STRUKTŪROS:
 "diagram_config": {
-  "type": "KETURKAMPE_PIRAMIDE",
+  "type": "SQUARE_PYRAMID",
   "labels": {
     "a": "6 cm",
     "h": "8 cm",
     "l": "10 cm"
   }
-}
+}`;
 }
 
 function buildSystemPrompt(grade: number, difficulty: string, taskCount: number, withDiagram: boolean, withGraph: boolean): string {
@@ -963,7 +1021,7 @@ Taisyklės:
       "question": "Užduoties tekstas su $formulėmis$",
       "answer": "Galutinis atsakymas, pvz. $x = 3$",
       "solution": "Sprendimas žingsniais su $formulėmis$",
-      "diagram_config": { "type": "triangle", "parameters": { "a": 5, "b": 4, "c": 6 }, "labels": { "a": "5 cm", "b": "?", "c": "6 cm" } }${withGraph ? "," + jsonEquationLine : ""}
+      "diagram_config": { "type": "TRIANGLE", "parameters": { "a": 5, "b": 4, "c": 6 }, "labels": { "a": "5 cm", "b": "?", "c": "6 cm" } }${withGraph ? "," + jsonEquationLine : ""}
     }
   ]
 }`
