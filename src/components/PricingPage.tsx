@@ -299,5 +299,11 @@ export const PricingPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </table>
           </div>
         </div>
+
+        <p className="text-center text-xs text-slate-400 mt-12">
+          Kainos nurodytos su PVM. Mokėjimai apdorojami per Stripe. Testinis režimas — realūs mokėjimai neimami.
+        </p>
+      </main>
+    </div>
   );
 };
