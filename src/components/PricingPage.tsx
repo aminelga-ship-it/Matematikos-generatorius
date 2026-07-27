@@ -299,3 +299,5 @@ export const PricingPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </table>
           </div>
         </div>
+  );
+};
