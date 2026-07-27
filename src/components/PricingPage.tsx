@@ -299,28 +299,3 @@ export const PricingPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </table>
           </div>
         </div>
-
-        {/* Always available */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { icon: <Triangle size={20} />, label: 'Geometrijos brėžiniai', desc: 'Visuose planuose' },
-            { icon: <LineChart size={20} />, label: 'GeoGebra grafikai', desc: 'Visuose planuose' },
-            { icon: <Sparkles size={20} />, label: 'Prioritetinis AI', desc: 'Tik PRO planuose' },
-          ].map((f) => (
-            <div key={f.label} className="rounded-xl border border-slate-200 bg-white p-5 flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-slate-100 text-slate-600">{f.icon}</div>
-              <div>
-                <div className="text-sm font-semibold text-slate-800">{f.label}</div>
-                <div className="text-xs text-slate-500">{f.desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <p className="text-center text-xs text-slate-400 mt-12">
-          Kainos nurodytos su PVM. Mokėjimai apdorojami per Stripe. Testinis režimas — realūs mokėjimai neimami.
-        </p>
-      </main>
-    </div>
-  );
-};
