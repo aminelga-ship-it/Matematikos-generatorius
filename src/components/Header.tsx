@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { Crown, Tag } from 'lucide-react';
 
 function getFirstName(fullName: string | null, email: string | null): string {
   if (fullName && fullName.trim()) {
@@ -19,7 +20,7 @@ function getFirstName(fullName: string | null, email: string | null): string {
   return 'Naudotojau';
 }
 
-export const Header: React.FC = () => {
+export const Header: React.FC<{ onOpenPricing?: () => void }> = ({ onOpenPricing }) => {
   const { user, profile, signInWithGoogle, signOut, loading } = useAuth();
 
   if (loading) {
@@ -33,11 +34,20 @@ export const Header: React.FC = () => {
 
   const isLoggedIn = !!user;
   const firstName = getFirstName(profile?.full_name ?? null, profile?.email ?? user?.email ?? null);
+  const planLabel = !user ? 'GUEST' : profile?.plan === 'pro' ? 'PRO' : 'FREE';
+  const isPro = profile?.plan === 'pro';
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm sticky top-0 z-50">
       <div className="flex items-center gap-2">
         <span className="text-xl font-bold text-indigo-600">MatematikaAI</span>
+        <button
+          onClick={onOpenPricing}
+          className="ml-2 flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg transition"
+        >
+          <Tag size={13} />
+          Planai
+        </button>
       </div>
 
       <div className="flex items-center gap-4">
@@ -45,23 +55,30 @@ export const Header: React.FC = () => {
           <div className="flex items-center gap-4 text-sm">
             {profile && (
               <div className="hidden md:flex items-center gap-3 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg text-gray-700">
-                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                  profile.plan === 'pro' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700'
+                <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${
+                  isPro ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700'
                 }`}>
-                  {profile.plan.toUpperCase()}
+                  {isPro && <Crown size={11} />}
+                  {planLabel}
                 </span>
                 <span>
-                  Užklausos: <strong>{profile.used_requests}</strong>/{profile.plan === 'pro' ? 100 : 3}
+                  Užklausos: <strong>{profile.used_requests}</strong>/{isPro ? 100 : 3}
                 </span>
                 <span className="text-gray-300">|</span>
                 <span>
-                  Užduotys: <strong>{profile.used_tasks}</strong>/{profile.plan === 'pro' ? 300 : 3}
+                  Užduotys: <strong>{profile.used_tasks}</strong>/{isPro ? 300 : 3}
                 </span>
               </div>
             )}
 
-            <span className="text-gray-700 font-medium">
+            <span className="text-gray-700 font-medium flex items-center gap-2">
               Sveikas, <span className="text-indigo-600 font-semibold">{firstName}</span>!
+              <span className={`md:hidden flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${
+                isPro ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700'
+              }`}>
+                {isPro && <Crown size={11} />}
+                {planLabel}
+              </span>
             </span>
 
             <button
@@ -73,7 +90,9 @@ export const Header: React.FC = () => {
           </div>
         ) : (
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500 hidden sm:inline">Svečio režimas</span>
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-lg">
+              {planLabel}
+            </span>
             <button
               onClick={signInWithGoogle}
               className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium shadow-sm transition text-sm"

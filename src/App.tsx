@@ -4,11 +4,15 @@ import { Calculator, AlertCircle, Sparkles } from "lucide-react";
 import { GenerateForm } from "./components/GenerateForm";
 import { TasksView } from "./components/TasksView";
 import { HistoryPanel } from "./components/HistoryPanel";
+import { PricingPage } from "./components/PricingPage";
 import { generateTasks, saveSession, getRecentSessions, loadSession } from "./lib/api";
 import type { Task, MathSession, Difficulty } from "./lib/types";
 import { GeoGebraGraph } from './components/GeoGebraGraph';
 
+type View = 'app' | 'pricing';
+
 export default function App() {
+  const [view, setView] = useState<View>('app');
   const [grade, setGrade] = useState(5);
   const [taskCount, setTaskCount] = useState(1);
   const [prompt, setPrompt] = useState("");
@@ -77,10 +81,15 @@ export default function App() {
     setTasks(null);
     setError(null);
   }, []);
-    return (
+
+  if (view === 'pricing') {
+    return <PricingPage onBack={() => setView('app')} />;
+  }
+
+  return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Nauja viršutinė navigacijos juosta su Auth, limitais ir logotipu */}
-      <Header />
+      <Header onOpenPricing={() => setView('pricing')} />
 
       <main className="max-w-5xl mx-auto px-6 py-10 flex-1 w-full">
         {tasks ? (
