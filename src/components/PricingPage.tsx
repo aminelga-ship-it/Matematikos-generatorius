@@ -300,24 +300,6 @@ export const PricingPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </div>
         </div>
 
-        {/* Feature highlights */}
-        <div className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { icon: <ImageIcon size={20} />, label: 'Nuotraukos įkėlimas', pro: true },
-            { icon: <Pencil size={20} />, label: 'Užduočių redagavimas', pro: true },
-            { icon: <FileText size={20} />, label: 'PDF eksportas', pro: true },
-            { icon: <FileType2 size={20} />, label: 'Word (.docx) eksportas', pro: true },
-          ].map((f) => (
-            <div key={f.label} className="rounded-xl border border-slate-200 bg-white p-4 flex flex-col items-center gap-2 text-center">
-              <div className={`p-2.5 rounded-lg ${f.pro ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
-                {f.icon}
-              </div>
-              <span className="text-sm font-medium text-slate-700">{f.label}</span>
-              <span className="text-[10px] font-semibold text-blue-600">PRO</span>
-            </div>
-          ))}
-        </div>
-
         {/* Always available */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
