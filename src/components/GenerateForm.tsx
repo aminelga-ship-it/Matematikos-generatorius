@@ -205,36 +205,36 @@ export function GenerateForm({
           {DIFFICULTIES.map((d) => {
             const locked = d.value === "savarankiskas" && !canSavarankiskas;
             return (
-            <button
-              key={d.value}
-              type="button"
-              onClick={() => {
-                if (locked) {
-                  onLockedAction("Savarankiško darbo režimas");
-                  return;
-                }
-                onDifficultyChange(d.value);
-              }}
-              className={`relative py-3 px-4 rounded-xl border-2 text-left transition-all duration-150 ${
-                difficulty === d.value
-                  ? `${DIFFICULTY_ACTIVE[d.value]} border-2`
-                  : locked
-                    ? "border-amber-100 bg-amber-50/50 text-slate-500"
-                    : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200 hover:bg-white"
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-0.5">
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    difficulty === d.value ? DIFFICULTY_COLORS[d.value] : "bg-slate-300"
-                  }`}
-                />
-                <span className="text-sm font-semibold">{d.label}</span>
-                {locked && <Lock size={12} className="text-amber-600 ml-auto flex-shrink-0" />}
-              </div>
-              <p className="text-xs opacity-70 pl-4">{d.desc}</p>
-            </button>
-          );
+              <button
+                key={d.value}
+                type="button"
+                onClick={() => {
+                  if (locked) {
+                    onLockedAction("Savarankiško darbo režimas");
+                    return;
+                  }
+                  onDifficultyChange(d.value);
+                }}
+                className={`relative py-3 px-4 rounded-xl border-2 text-left transition-all duration-150 ${
+                  difficulty === d.value
+                    ? `${DIFFICULTY_ACTIVE[d.value]} border-2`
+                    : locked
+                      ? "border-amber-100 bg-amber-50/50 text-slate-500"
+                      : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200 hover:bg-white"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      difficulty === d.value ? DIFFICULTY_COLORS[d.value] : "bg-slate-300"
+                    }`}
+                  />
+                  <span className="text-sm font-semibold">{d.label}</span>
+                  {locked && <Lock size={12} className="text-amber-600 ml-auto flex-shrink-0" />}
+                </div>
+                <p className="text-xs opacity-70 pl-4">{d.desc}</p>
+              </button>
+            );
           })}
         </div>
       </div>

@@ -61,7 +61,7 @@ export const GeoGebraGraph: React.FC<GeoGebraGraphProps> = ({ equation, height =
   return (
     <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-2 font-semibold text-slate-700">📐 GeoGebra Braižyklė</div>
-    
+
       <div id="ggb-element" className="w-full overflow-hidden rounded-lg min-h-[500px] bg-slate-50" />
     </div>
   );
