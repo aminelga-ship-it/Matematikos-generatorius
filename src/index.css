@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+/* ── KaTeX rendering overrides ────────────────────────────────────────────── */
+
+/* Base KaTeX font size — makes all math proportional to surrounding text */
+.katex {
+  font-size: 1.08em;
+}
+
+/* Superscripts (exponents): larger and bolder so 2³ is clearly readable */
+.katex .msupsub sup,
+.katex .msup .msupsub {
+  font-size: 0.82em !important;
+}
+
+/* Ensure superscript glyphs aren't squished vertically */
+.katex .msupsub {
+  vertical-align: baseline;
+}
+
+/* Absolute-value / norm bars — thicker stroke so |x| is clearly visible */
+.katex .mopen,
+.katex .mclose {
+  font-weight: 500;
+}
+
+/* Fraction bars — slightly thicker */
+.katex .frac-line {
+  border-bottom-width: 0.07em !important;
+}
+
+/* Radical / sqrt symbol — bolder line */
+.katex .sqrt > .root,
+.katex .sqrt-line {
+  border-top-width: 0.07em !important;
+}
+
+/* Display-mode math: give it comfortable breathing room */
+.katex-display {
+  margin: 0.6em 0 !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Inline math: keep baseline-aligned with surrounding text */
+.katex-inline {
+  vertical-align: middle;
+}
+
+@media print {
+  header,
+  button,
+  nav,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    font-family: 'Times New Roman', Georgia, serif;
+    font-size: 11pt;
+    color: #000;
+  }
+
+  main {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Hide toolbar in print */
+  .space-y-5 > *:first-child {
+    display: none !important;
+  }
+
+  /* Task cards in print */
+  .rounded-2xl {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-left: none !important;
+  }
+
+  .space-y-3 > * {
+    page-break-inside: avoid;
+    margin-bottom: 1.2em;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 0.8em;
+  }
+
+  /* Show answers and solutions stripped for print */
+  .bg-emerald-50,
+  .bg-blue-50 {
+    background: transparent !important;
+    border: 1px solid #ccc !important;
+  }
+}
