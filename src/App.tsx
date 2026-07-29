@@ -1,13 +1,13 @@
 import { Header } from './components/Header';
-import React, { useState, useEffect, useCallback } from "react";
-import { Calculator, AlertCircle, Sparkles } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { AlertCircle } from "lucide-react";
 import { GenerateForm } from "./components/GenerateForm";
 import { TasksView } from "./components/TasksView";
 import { HistoryPanel } from "./components/HistoryPanel";
 import { PricingPage } from "./components/PricingPage";
 import { generateTasks, saveSession, getRecentSessions, loadSession } from "./lib/api";
 import type { Task, MathSession, Difficulty } from "./lib/types";
-import { GeoGebraGraph } from './components/GeoGebraGraph';
+import { usePlan, useUpgradeGate } from './lib/usePlan';
 
 type View = 'app' | 'pricing';
 
@@ -27,6 +27,11 @@ export default function App() {
   const [showSolutions, setShowSolutions] = useState(false);
   const [sessions, setSessions] = useState<MathSession[]>([]);
   const [currentGrade, setCurrentGrade] = useState(7);
+
+  const plan = usePlan();
+  const { gate, modal } = useUpgradeGate();
+
+  const goToPricing = useCallback(() => setView('pricing'), []);
 
   useEffect(() => {
     getRecentSessions().then(setSessions);
@@ -82,14 +87,26 @@ export default function App() {
     setError(null);
   }, []);
 
+  const handleEditTask = useCallback((index: number, updated: Task) => {
+    setTasks((prev) => {
+      if (!prev) return prev;
+      const next = [...prev];
+      next[index] = updated;
+      return next;
+    });
+  }, []);
+
+  const handleLockedAction = useCallback((featureName: string) => {
+    gate(false, featureName);
+  }, [gate]);
+
   if (view === 'pricing') {
     return <PricingPage onBack={() => setView('app')} />;
   }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Nauja viršutinė navigacijos juosta su Auth, limitais ir logotipu */}
-      <Header onOpenPricing={() => setView('pricing')} />
+      <Header onOpenPricing={goToPricing} />
 
       <main className="max-w-5xl mx-auto px-6 py-10 flex-1 w-full">
         {tasks ? (
@@ -99,9 +116,14 @@ export default function App() {
             taskCount={taskCount}
             showAnswers={showAnswers}
             showSolutions={showSolutions}
+            canEdit={plan.canEditTasks}
+            canExport={plan.canExport}
+            canPrint={plan.canPrint}
             onToggleAnswers={() => setShowAnswers((p) => !p)}
             onToggleSolutions={() => setShowSolutions((p) => !p)}
             onReset={handleReset}
+            onEditTask={handleEditTask}
+            onLockedAction={handleLockedAction}
           />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -132,6 +154,8 @@ export default function App() {
                 withDiagram={withDiagram}
                 withGraph={withGraph}
                 loading={loading}
+                canUploadImage={plan.canUploadImage}
+                maxTasksPerGeneration={plan.maxTasksPerGeneration}
                 onGradeChange={(v) => {
                   setGrade(v);
                   if (v < 7) setWithDiagram(false);
@@ -144,16 +168,22 @@ export default function App() {
                 onWithDiagramChange={setWithDiagram}
                 onWithGraphChange={setWithGraph}
                 onSubmit={handleGenerate}
+                onLockedAction={handleLockedAction}
               />
             </div>
 
-            {/* Dešinė pusė: istorija / pavyzdžiai */}
+            {/* Dešinė pusė: istorija */}
             <div>
-              {/* Istorijos arba pavyzdžių komponentas */}
+              <HistoryPanel
+                sessions={sessions}
+                onSelect={handleSelectSession}
+              />
             </div>
           </div>
         )}
       </main>
+
+      {modal(goToPricing)}
     </div>
   );
 }

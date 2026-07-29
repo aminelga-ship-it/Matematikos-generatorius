@@ -3,18 +3,9 @@ import { useAuth } from '../hooks/useAuth';
 import {
   Check,
   X,
-  Sparkles,
-  Image as ImageIcon,
-  FileText,
-  FileType2,
-  Pencil,
-  Zap,
-  Triangle,
-  LineChart,
   Plus,
   ArrowLeft,
   Calendar,
-  Infinity as InfinityIcon,
 } from 'lucide-react';
 
 type PlanKey = 'guest' | 'free' | 'pro';

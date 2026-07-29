@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback } from "react";
-import { Loader2, ImagePlus, X, Image as ImageIcon, PenLine, TrendingUp } from "lucide-react";
+import { Loader2, ImagePlus, X, Image as ImageIcon, PenLine, TrendingUp, Lock } from "lucide-react";
 import type { Difficulty } from "../lib/types";
 
 interface GenerateFormProps {
@@ -11,6 +11,8 @@ interface GenerateFormProps {
   withDiagram: boolean;
   withGraph: boolean;
   loading: boolean;
+  canUploadImage: boolean;
+  maxTasksPerGeneration: number;
   onGradeChange: (v: number) => void;
   onTaskCountChange: (v: number) => void;
   onPromptChange: (v: string) => void;
@@ -19,6 +21,7 @@ interface GenerateFormProps {
   onWithDiagramChange: (v: boolean) => void;
   onWithGraphChange: (v: boolean) => void;
   onSubmit: () => void;
+  onLockedAction: (featureName: string) => void;
 }
 
 const DIFFICULTIES: { value: Difficulty; label: string; desc: string }[] = [
@@ -76,6 +79,8 @@ export function GenerateForm({
   withDiagram,
   withGraph,
   loading,
+  canUploadImage,
+  maxTasksPerGeneration,
   onGradeChange,
   onTaskCountChange,
   onPromptChange,
@@ -84,18 +89,24 @@ export function GenerateForm({
   onWithDiagramChange,
   onWithGraphChange,
   onSubmit,
+  onLockedAction,
 }: GenerateFormProps) {
   const grades = Array.from({ length: 12 }, (_, i) => i + 1);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
   const processFile = useCallback(async (file: File) => {
+    if (!canUploadImage) {
+      onLockedAction("Nuotraukos įkėlimas");
+      return;
+    }
     if (!file.type.startsWith("image/")) return;
     const b64 = await resizeImageToBase64(file);
     onImageChange(b64);
-  }, [onImageChange]);
+  }, [onImageChange, canUploadImage, onLockedAction]);
 
   const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
+    if (!canUploadImage) return;
     const items = Array.from(e.clipboardData.items);
     const imageItem = items.find((i) => i.type.startsWith("image/"));
     if (imageItem) {
@@ -103,14 +114,18 @@ export function GenerateForm({
       const file = imageItem.getAsFile();
       if (file) await processFile(file);
     }
-  }, [processFile]);
+  }, [processFile, canUploadImage]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
+    if (!canUploadImage) {
+      onLockedAction("Nuotraukos įkėlimas");
+      return;
+    }
     const file = e.dataTransfer.files[0];
     if (file) await processFile(file);
-  }, [processFile]);
+  }, [processFile, canUploadImage, onLockedAction]);
 
   const canSubmit = !loading && (prompt.trim().length >= 3 || !!imagePreview);
 
@@ -153,15 +168,15 @@ export function GenerateForm({
             id="task-count"
             type="number"
             min={1}
-            max={30}
+            max={maxTasksPerGeneration}
             value={taskCount}
             onChange={(e) => {
               const v = parseInt(e.target.value, 10);
-              if (!isNaN(v) && v >= 1 && v <= 30) onTaskCountChange(v);
+              if (!isNaN(v) && v >= 1 && v <= maxTasksPerGeneration) onTaskCountChange(v);
             }}
             className="w-full px-4 py-3 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 text-center focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
           />
-          <p className="text-xs text-slate-400">Nuo 1 iki 30</p>
+          <p className="text-xs text-slate-400">Nuo 1 iki {maxTasksPerGeneration}</p>
         </div>
       </div>
 
@@ -259,7 +274,7 @@ export function GenerateForm({
         </label>
 
         {/* Image preview */}
-        {imagePreview && (
+        {imagePreview && canUploadImage && (
           <div className="relative inline-block">
             <img
               src={imagePreview}
@@ -315,26 +330,32 @@ export function GenerateForm({
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 hover:text-slate-700 transition-colors"
+            onClick={() => canUploadImage ? fileInputRef.current?.click() : onLockedAction("Nuotraukos įkėlimas")}
+            className={`flex items-center gap-2 px-3 py-2 text-xs font-medium border rounded-lg transition-colors ${
+              canUploadImage
+                ? "text-slate-500 bg-slate-50 border-slate-200 hover:bg-slate-100 hover:text-slate-700"
+                : "text-amber-600 bg-amber-50 border-amber-200 hover:bg-amber-100"
+            }`}
           >
-            <ImagePlus size={14} />
-            Įkelti nuotrauką
+            {canUploadImage ? <ImagePlus size={14} /> : <Lock size={12} />}
+            {canUploadImage ? "Įkelti nuotrauką" : "Įkelti nuotrauką (PRO)"}
           </button>
           <span className="text-xs text-slate-400">
-            arba nuvilkite / įklijuokite nuotrauką (Ctrl+V)
+            {canUploadImage ? "arba nuvilkite / įklijuokite nuotrauką (Ctrl+V)" : "PRO planui tik"}
           </span>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (file) await processFile(file);
-              e.target.value = "";
-            }}
-          />
+          {canUploadImage && (
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (file) await processFile(file);
+                e.target.value = "";
+              }}
+            />
+          )}
         </div>
       </div>
 

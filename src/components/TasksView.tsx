@@ -1,7 +1,11 @@
-import React from "react";
-import { Eye, EyeOff, BookOpen, BookX, Printer, RotateCcw, GraduationCap } from "lucide-react";
+
+import {
+  Eye, EyeOff, BookOpen, BookX, Printer, RotateCcw, GraduationCap,
+  FileText, FileType2, Lock,
+} from "lucide-react";
 import { TaskCard } from "./TaskCard";
 import type { Task } from "../lib/types";
+import { exportToWord, exportToPDF } from "../lib/export";
 
 interface TasksViewProps {
   tasks: Task[];
@@ -9,9 +13,14 @@ interface TasksViewProps {
   taskCount: number;
   showAnswers: boolean;
   showSolutions: boolean;
+  canEdit: boolean;
+  canExport: boolean;
+  canPrint: boolean;
   onToggleAnswers: () => void;
   onToggleSolutions: () => void;
   onReset: () => void;
+  onEditTask: (index: number, updated: Task) => void;
+  onLockedAction: (featureName: string) => void;
 }
 
 export function TasksView({
@@ -19,9 +28,14 @@ export function TasksView({
   grade,
   showAnswers,
   showSolutions,
+  canEdit,
+  canExport,
+  canPrint,
   onToggleAnswers,
   onToggleSolutions,
   onReset,
+  onEditTask,
+  onLockedAction,
 }: TasksViewProps) {
   return (
     <div className="space-y-5">
@@ -68,11 +82,42 @@ export function TasksView({
 
           <div className="w-px h-5 bg-slate-200 mx-1" />
 
+          {/* PDF export */}
           <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 transition-all duration-150"
+            onClick={() => canExport ? exportToPDF(tasks, grade) : onLockedAction("PDF eksportas")}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
+              canExport
+                ? "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
+                : "border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100"
+            }`}
           >
-            <Printer size={13} />
+            {canExport ? <FileText size={13} /> : <Lock size={12} />}
+            PDF
+          </button>
+
+          {/* Word export */}
+          <button
+            onClick={() => canExport ? exportToWord(tasks, grade) : onLockedAction("Word (.docx) eksportas")}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
+              canExport
+                ? "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
+                : "border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100"
+            }`}
+          >
+            {canExport ? <FileType2 size={13} /> : <Lock size={12} />}
+            Word
+          </button>
+
+          {/* Print */}
+          <button
+            onClick={() => canPrint ? window.print() : onLockedAction("Spausdinimas")}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
+              canPrint
+                ? "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
+                : "border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100"
+            }`}
+          >
+            {canPrint ? <Printer size={13} /> : <Lock size={12} />}
             Spausdinti
           </button>
 
@@ -95,6 +140,8 @@ export function TasksView({
             index={i}
             showAnswers={showAnswers}
             showSolutions={showSolutions}
+            canEdit={canEdit}
+            onEdit={onEditTask}
           />
         ))}
       </div>

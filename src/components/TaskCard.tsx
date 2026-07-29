@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { ChevronDown, ChevronUp, CheckCircle, BookOpen } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ChevronUp, CheckCircle, BookOpen, Pencil, Check, X } from "lucide-react";
 import { MathText } from "./MathText";
 import { GeometryVisualizer } from "./GeometryVisualizer";
 import { GeoGebraGraph } from './GeoGebraGraph';
@@ -10,19 +10,19 @@ interface TaskCardProps {
   index: number;
   showAnswers: boolean;
   showSolutions: boolean;
+  canEdit?: boolean;
+  onEdit?: (index: number, updated: Task) => void;
 }
 
 // Split task question into sub-parts a), b), c)… each on its own line.
 // Only splits on sub-part markers that appear OUTSIDE of $...$ math blocks.
 function splitSubParts(text: string): { label: string | null; content: string }[] {
-  // Collect positions of math spans to avoid splitting inside them
   const mathRanges: [number, number][] = [];
   for (const m of text.matchAll(/\$\$[\s\S]+?\$\$|\$[^$\n]+?\$/g)) {
     mathRanges.push([m.index!, m.index! + m[0].length]);
   }
   const inMath = (pos: number) => mathRanges.some(([s, e]) => pos >= s && pos < e);
 
-  // Find split points: newline or whitespace before a), b) / 1) 2) markers
   const splitRe = /(?:[\n]|(?<=\s))(?=[a-žA-Ž]\)|\d+\))/g;
   const splitPoints: number[] = [];
   for (const m of text.matchAll(splitRe)) {
@@ -71,11 +71,29 @@ const CARD_ACCENT_COLORS = [
   "border-l-indigo-500",
 ];
 
-export function TaskCard({ task, index, showAnswers, showSolutions }: TaskCardProps) {
+export function TaskCard({ task, index, showAnswers, showSolutions, canEdit, onEdit }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Task>(task);
+
   const accentColor = CARD_ACCENT_COLORS[index % CARD_ACCENT_COLORS.length];
-  const subParts = splitSubParts(task.question);
-  const solutionLines = parseSolutionLines(task.solution);
+  const subParts = splitSubParts(editing ? draft.question : task.question);
+  const solutionLines = parseSolutionLines(editing ? draft.solution : task.solution);
+
+  const startEdit = () => {
+    setDraft(task);
+    setEditing(true);
+  };
+
+  const saveEdit = () => {
+    onEdit?.(index, draft);
+    setEditing(false);
+  };
+
+  const cancelEdit = () => {
+    setDraft(task);
+    setEditing(false);
+  };
 
   return (
     <div
@@ -96,33 +114,104 @@ export function TaskCard({ task, index, showAnswers, showSolutions }: TaskCardPr
 
           {/* Question content */}
           <div className="flex-1 pt-0.5 space-y-1.5">
-            {subParts.map((part, i) => (
-              <div key={i} className={part.label ? "flex items-baseline gap-2.5" : ""}>
-                {part.label && (
-                  <span className="flex-shrink-0 font-bold text-blue-600 text-[14px] min-w-[1.6rem]">
-                    {part.label}
-                  </span>
-                )}
-                <span className="text-slate-800 text-[15px] leading-[1.75]">
-                  <MathText text={part.content} />
-                </span>
+            {editing ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                    Klausimas
+                  </label>
+                  <textarea
+                    value={draft.question}
+                    onChange={(e) => setDraft({ ...draft, question: e.target.value })}
+                    rows={4}
+                    className="w-full px-3 py-2 text-sm text-slate-700 border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                    Atsakymas
+                  </label>
+                  <input
+                    type="text"
+                    value={draft.answer}
+                    onChange={(e) => setDraft({ ...draft, answer: e.target.value })}
+                    className="w-full px-3 py-2 text-sm text-slate-700 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                    Sprendimas
+                  </label>
+                  <textarea
+                    value={draft.solution}
+                    onChange={(e) => setDraft({ ...draft, solution: e.target.value })}
+                    rows={4}
+                    className="w-full px-3 py-2 text-sm text-slate-700 border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={saveEdit}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                  >
+                    <Check size={14} />
+                    Išsaugoti
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                  >
+                    <X size={14} />
+                    Atšaukti
+                  </button>
+                </div>
               </div>
-            ))}
-            
-            {/* Geometry diagram */}
-            {task.diagram_config && (
-              <GeometryVisualizer config={task.diagram_config} />
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 space-y-1.5">
+                    {subParts.map((part, i) => (
+                      <div key={i} className={part.label ? "flex items-baseline gap-2.5" : ""}>
+                        {part.label && (
+                          <span className="flex-shrink-0 font-bold text-blue-600 text-[14px] min-w-[1.6rem]">
+                            {part.label}
+                          </span>
+                        )}
+                        <span className="text-slate-800 text-[15px] leading-[1.75]">
+                          <MathText text={part.content} />
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {canEdit && (
+                    <button
+                      onClick={startEdit}
+                      className="flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition"
+                      title="Redaguoti užduotį"
+                    >
+                      <Pencil size={12} />
+                      Redaguoti
+                    </button>
+                  )}
+                </div>
+
+                {/* Geometry diagram */}
+                {task.diagram_config && (
+                  <GeometryVisualizer config={task.diagram_config} />
+                )}
+                {/* Interaktyvus GeoGebra grafikas */}
+                {Boolean(task.function_equation && task.function_equation.trim() !== '') && (
+                  <GeoGebraGraph equation={task.function_equation} />
+                )}
+              </>
             )}
-              {/* Interaktyvus GeoGebra grafikas*/}
-            {Boolean(task.function_equation && task.function_equation.trim() !== '') && (
-              <GeoGebraGraph equation={task.function_equation} />
-      )}
           </div>
         </div>
       </div>
 
       {/* Answer */}
-      {showAnswers && (
+      {showAnswers && !editing && (
         <div className="mx-6 mb-4 flex items-center gap-3 px-4 py-3 bg-emerald-50 rounded-xl border border-emerald-100">
           <CheckCircle size={15} className="text-emerald-500 flex-shrink-0" />
           <div className="min-w-0">
@@ -137,7 +226,7 @@ export function TaskCard({ task, index, showAnswers, showSolutions }: TaskCardPr
       )}
 
       {/* Solution accordion */}
-      {showSolutions && (
+      {showSolutions && !editing && (
         <div className="border-t border-slate-100">
           <button
             onClick={() => setExpanded((p) => !p)}
