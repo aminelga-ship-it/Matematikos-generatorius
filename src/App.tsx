@@ -109,7 +109,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Header onOpenPricing={goToPricing} />
 
-      <main className="max-w-5xl mx-auto px-6 py-10 flex-1 w-full">
+      <main className="max-w-6xl mx-auto px-6 py-10 flex-1 w-full">
         {tasks ? (
           <TasksView
             tasks={tasks}
@@ -127,14 +127,14 @@ export default function App() {
             onLockedAction={handleLockedAction}
           />
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="space-y-2">
+          <div className="flex flex-col gap-12">
+            <div className="w-full max-w-5xl mx-auto space-y-6">
+              <div className="space-y-2 text-center">
                 <h2 className="text-3xl font-bold text-slate-800 leading-tight">
                   Generuok matematikos <br />
                   <span className="text-blue-600">užduotis akimirksniu</span>
                 </h2>
-                <p className="text-slate-500 text-base">
+                <p className="text-slate-500 text-base max-w-2xl mx-auto">
                   Pasirink klasę, sunkumą ir aprašyk, ko nori — AI sukurs užduotis pagal Lietuvos mokymo programą.
                 </p>
               </div>
@@ -179,8 +179,7 @@ export default function App() {
               />
             </div>
 
-            {/* Dešinė pusė: istorija */}
-            <div>
+            <div className="w-full max-w-5xl mx-auto">
               <HistoryPanel
                 sessions={sessions}
                 onSelect={handleSelectSession}

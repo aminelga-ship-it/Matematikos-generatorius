@@ -26,14 +26,14 @@ interface GenerateFormProps {
   onLockedAction: (featureName: string) => void;
 }
 
-const DIFFICULTIES: { value: Difficulty; label: string; desc: string }[] = [
-  { value: "lengvos", label: "Lengvos", desc: "Baziniai skaičiavimai" },
-  { value: "vidutinės", label: "Vidutinės", desc: "Keli sprendimo žingsniai" },
-  { value: "sunkios", label: "Sunkios", desc: "Sudėtingi sprendimai" },
+const DIFFICULTIES: { value: Difficulty; label: string; hint?: string }[] = [
+  { value: "lengvos", label: "Lengvos" },
+  { value: "vidutinės", label: "Vidutinės" },
+  { value: "sunkios", label: "Sunkios" },
   {
     value: "savarankiskas",
     label: "Savarankiškas darbas",
-    desc: "~40% lengvų, ~40% vid., ~20% sunkių",
+    hint: "įvairaus sudėtingumo",
   },
 ];
 
@@ -201,7 +201,7 @@ export function GenerateForm({
         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest">
           Sunkumo lygis
         </label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {DIFFICULTIES.map((d) => {
             const locked = d.value === "savarankiskas" && !canSavarankiskas;
             return (
@@ -215,7 +215,7 @@ export function GenerateForm({
                   }
                   onDifficultyChange(d.value);
                 }}
-                className={`relative py-3 px-4 rounded-xl border-2 text-left transition-all duration-150 ${
+                className={`relative py-2.5 px-3 rounded-xl border-2 text-center transition-all duration-150 ${
                   difficulty === d.value
                     ? `${DIFFICULTY_ACTIVE[d.value]} border-2`
                     : locked
@@ -223,16 +223,18 @@ export function GenerateForm({
                       : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200 hover:bg-white"
                 }`}
               >
-                <div className="flex items-center gap-2 mb-0.5">
+                <div className="flex items-center justify-center gap-1.5">
                   <span
-                    className={`w-2 h-2 rounded-full ${
+                    className={`w-2 h-2 rounded-full flex-shrink-0 ${
                       difficulty === d.value ? DIFFICULTY_COLORS[d.value] : "bg-slate-300"
                     }`}
                   />
-                  <span className="text-sm font-semibold">{d.label}</span>
-                  {locked && <Lock size={12} className="text-amber-600 ml-auto flex-shrink-0" />}
+                  <span className="text-sm font-semibold leading-tight">{d.label}</span>
+                  {locked && <Lock size={12} className="text-amber-600 flex-shrink-0" />}
                 </div>
-                <p className="text-xs opacity-70 pl-4">{d.desc}</p>
+                {d.hint && (
+                  <p className="text-[11px] opacity-70 mt-1 leading-tight">{d.hint}</p>
+                )}
               </button>
             );
           })}
@@ -368,9 +370,11 @@ export function GenerateForm({
             {canUploadImage ? <ImagePlus size={14} /> : <Lock size={12} />}
             {canUploadImage ? "Įkelti nuotrauką" : "Įkelti nuotrauką (PRO)"}
           </button>
-          <span className="text-xs text-slate-400">
-            {canUploadImage ? "arba nuvilkite / įklijuokite nuotrauką (Ctrl+V)" : "PRO planui tik"}
-          </span>
+          {canUploadImage && (
+            <span className="text-xs text-slate-400">
+              arba nuvilkite / įklijuokite nuotrauką (Ctrl+V)
+            </span>
+          )}
           {canUploadImage && (
             <input
               ref={fileInputRef}
