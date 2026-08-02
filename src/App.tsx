@@ -5,12 +5,23 @@ import { GenerateForm } from "./components/GenerateForm";
 import { TasksView } from "./components/TasksView";
 import { HistoryPanel } from "./components/HistoryPanel";
 import { PricingPage } from "./components/PricingPage";
+import { GuidePage } from "./components/GuidePage";
+import { AdminBankPage } from "./components/AdminBankPage";
+import { RolePickerModal } from "./components/RolePickerModal";
 import { generateTasks, saveSession, getRecentSessions, loadSession } from "./lib/api";
-import type { Task, MathSession, Difficulty } from "./lib/types";
-import { SAVARANKISKAS_MIN_TASKS } from "./lib/types";
+import { updateTaskBankItem, createGeneratedTaskBankDraft } from "./lib/bankApi";
+import type { Task, MathSession, Difficulty, GenerationMode, BankDifficulty } from "./lib/types";
 import { usePlan, useUpgradeGate } from './lib/usePlan';
+import { supabase } from "./lib/supabase";
+import { useAuth } from "./hooks/useAuth";
+import { showGenerationSourceHint } from "./lib/devFlags";
 
-type View = 'app' | 'pricing';
+type View = 'app' | 'pricing' | 'guide' | 'admin';
+
+function toBankDifficulty(d: Difficulty): BankDifficulty {
+  if (d === "lengvos" || d === "sunkios") return d;
+  return "vidutinės";
+}
 
 export default function App() {
   const [view, setView] = useState<View>('app');
@@ -18,11 +29,14 @@ export default function App() {
   const [taskCount, setTaskCount] = useState(1);
   const [prompt, setPrompt] = useState("");
   const [difficulty, setDifficulty] = useState<Difficulty>("vidutinės");
+  const [generationMode, setGenerationMode] = useState<GenerationMode>("text");
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [withDiagram, setWithDiagram] = useState(false);
   const [withGraph, setWithGraph] = useState(false);
+  const [withSolution, setWithSolution] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [generationMeta, setGenerationMeta] = useState<{ bankCount: number; aiCount: number } | null>(null);
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [showAnswers, setShowAnswers] = useState(false);
   const [showSolutions, setShowSolutions] = useState(false);
@@ -31,11 +45,52 @@ export default function App() {
 
   const plan = usePlan();
   const { gate, modal } = useUpgradeGate();
+  const { user, profile, refetchProfile } = useAuth();
+  const [subtopicIds, setSubtopicIds] = useState<string[]>([]);
+  const [topicIds, setTopicIds] = useState<string[]>([]);
+  const [showRolePicker, setShowRolePicker] = useState(false);
 
-  const goToPricing = useCallback(() => setView('pricing'), []);
+  useEffect(() => {
+    if (user && profile && profile.role == null) {
+      setShowRolePicker(true);
+    } else {
+      setShowRolePicker(false);
+    }
+  }, [user, profile]);
+
+  const goToPricing = useCallback(() => setView((v) => (v === 'pricing' ? 'app' : 'pricing')), []);
+  const goToGuide = useCallback(() => setView((v) => (v === 'guide' ? 'app' : 'guide')), []);
 
   useEffect(() => {
     getRecentSessions().then(setSessions);
+  }, []);
+
+  useEffect(() => {
+    if (generationMode === "topic") {
+      setWithSolution(false);
+      return;
+    }
+    if (grade < 7 || (difficulty !== "sunkios" && difficulty !== "ivairus")) {
+      setWithSolution(false);
+    }
+  }, [difficulty, generationMode, grade]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("view") === "pricing") {
+      setView("pricing");
+    }
+
+    const hasAuthCallback =
+      params.has("code") ||
+      window.location.hash.includes("access_token") ||
+      params.has("error_description");
+
+    if (!hasAuthCallback) return;
+
+    void supabase.auth.getSession().finally(() => {
+      window.history.replaceState({}, "", "/");
+    });
   }, []);
 
   const handleGenerate = useCallback(async () => {
@@ -43,22 +98,46 @@ export default function App() {
     setError(null);
 
     try {
-      const effectiveWithDiagram = grade >= 7 ? withDiagram : false;
+      const effectiveWithDiagram = grade <= 6 ? withDiagram : false;
       const effectiveWithGraph = grade >= 9 ? withGraph : false;
-      const generated = await generateTasks(
+      const { tasks: generated, meta } = await generateTasks(
         grade,
         taskCount,
         prompt,
         difficulty,
         imageBase64 ?? undefined,
         effectiveWithDiagram,
-        effectiveWithGraph
+        effectiveWithGraph,
+        withSolution,
+        generationMode === "topic" ? subtopicIds : undefined,
+        generationMode === "topic" ? topicIds : undefined,
+        generationMode,
       );
       setTasks(generated);
+      setGenerationMeta(
+        meta && generationMode === "topic"
+          ? { bankCount: meta.bankCount, aiCount: meta.aiCount }
+          : null,
+      );
       setCurrentGrade(grade);
       setShowAnswers(false);
       setShowSolutions(false);
-      const saved = await saveSession(grade, taskCount, prompt, difficulty, generated, imageBase64 ?? undefined);
+      const sessionPrompt =
+        generationMode === "topic"
+          ? `Pagal temą (${subtopicIds.length} potemės, ${topicIds.length} temos)`
+          : imageBase64 && prompt.trim().length < 3
+            ? "Sukurk panašią užduotį (nuotrauka)"
+            : prompt;
+      const saved = await saveSession(
+        grade,
+        taskCount,
+        sessionPrompt,
+        difficulty,
+        generated,
+        imageBase64 ?? undefined,
+        generationMode === "topic" ? topicIds : undefined,
+        generationMode === "topic" ? subtopicIds : undefined,
+      );
       if (saved) {
         setSessions((prev) => [saved, ...prev].slice(0, 10));
       }
@@ -67,7 +146,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [grade, taskCount, prompt, difficulty, imageBase64, withDiagram, withGraph]);
+  }, [grade, taskCount, prompt, difficulty, generationMode, imageBase64, withDiagram, withGraph, withSolution, subtopicIds, topicIds]);
 
   const handleSelectSession = useCallback(async (id: string) => {
     const session = await loadSession(id);
@@ -75,9 +154,26 @@ export default function App() {
     setGrade(session.grade);
     setTaskCount(session.task_count);
     setPrompt(session.prompt);
-    setDifficulty(session.difficulty ?? "vidutinės");
+    if (session.difficulty === "savarankiskas" || session.prompt.startsWith("Pagal temą")) {
+      setGenerationMode("topic");
+      setDifficulty(
+        session.difficulty === "ivairus" ? "vidutinės" : (session.difficulty ?? "vidutinės"),
+      );
+    } else {
+      setGenerationMode("text");
+      if (
+        session.difficulty === "ivairus" ||
+        session.difficulty === "lengvos" ||
+        session.difficulty === "vidutinės" ||
+        session.difficulty === "sunkios"
+      ) {
+        setDifficulty(session.difficulty);
+      }
+    }
     setImageBase64(session.image_data ?? null);
     setTasks(session.tasks);
+    setTopicIds(session.topic_ids ?? []);
+    setSubtopicIds(session.subtopic_ids ?? []);
     setCurrentGrade(session.grade);
     setShowAnswers(false);
     setShowSolutions(false);
@@ -85,39 +181,104 @@ export default function App() {
 
   const handleReset = useCallback(() => {
     setTasks(null);
+    setGenerationMeta(null);
     setError(null);
+    setSubtopicIds([]);
+    setTopicIds([]);
   }, []);
 
-  const handleEditTask = useCallback((index: number, updated: Task) => {
+  const handleBankFeedback = useCallback((index: number, result: "approved" | "draft" | "deleted") => {
+    if (result === "deleted") {
+      setTasks((prev) => {
+        if (!prev) return prev;
+        const next = [...prev];
+        const t = next[index];
+        if (t) next[index] = { ...t, bank_item_id: undefined };
+        return next;
+      });
+    }
+  }, []);
+
+  const handleBankItemLinked = useCallback((index: number, bankItemId: string) => {
     setTasks((prev) => {
       if (!prev) return prev;
       const next = [...prev];
-      next[index] = updated;
+      const t = next[index];
+      if (t) next[index] = { ...t, bank_item_id: bankItemId };
       return next;
     });
   }, []);
+
+  const handleEditTask = useCallback((index: number, updated: Task) => {
+    const persist = async () => {
+      let bankId = updated.bank_item_id;
+      const isStaff = profile?.role === "teacher" || profile?.role === "admin";
+      if (!bankId && isStaff) {
+        try {
+          bankId = await createGeneratedTaskBankDraft({
+            grade: currentGrade,
+            difficulty: toBankDifficulty(difficulty),
+            task: updated,
+          });
+          updated = { ...updated, bank_item_id: bankId };
+        } catch (e) {
+          console.error("Bank draft create:", e);
+        }
+      }
+      setTasks((prev) => {
+        if (!prev) return prev;
+        const next = [...prev];
+        next[index] = updated;
+        return next;
+      });
+      if (bankId) {
+        const isAdmin = profile?.role === "admin";
+        void updateTaskBankItem(bankId, {
+          question: updated.question,
+          answer: updated.answer,
+          solution: updated.solution,
+          source: isAdmin ? "manual" : "user_corrected",
+        }).catch((e) => console.error("Bank update:", e));
+      }
+    };
+    void persist();
+  }, [profile?.role, currentGrade, difficulty]);
 
   const handleLockedAction = useCallback((featureName: string) => {
     gate(false, featureName);
   }, [gate]);
 
-  if (view === 'pricing') {
-    return <PricingPage onBack={() => setView('app')} />;
-  }
+  const isAdmin = profile?.role === "admin";
+  const showTeacherFeedback = profile?.role === "teacher" || isAdmin;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <Header onOpenPricing={goToPricing} />
+      <Header
+        onOpenPricing={goToPricing}
+        pricingOpen={view === 'pricing'}
+        onOpenGuide={goToGuide}
+        guideOpen={view === 'guide'}
+        onOpenAdmin={isAdmin ? () => setView((v) => (v === 'admin' ? 'app' : 'admin')) : undefined}
+        adminOpen={view === 'admin'}
+      />
 
-      <main className="max-w-6xl mx-auto px-6 py-10 flex-1 w-full">
-        {tasks ? (
+      <main className={`mx-auto px-4 sm:px-6 py-8 flex-1 w-full ${
+        view === 'pricing' ? 'max-w-6xl' : view === 'admin' ? 'max-w-5xl' : view === 'guide' ? 'max-w-3xl' : 'max-w-4xl'
+      }`}>
+        {view === 'admin' && isAdmin ? (
+          <AdminBankPage onBack={() => setView('app')} />
+        ) : view === 'pricing' ? (
+          <PricingPage />
+        ) : view === 'guide' ? (
+          <GuidePage isAdmin={isAdmin} />
+        ) : tasks ? (
           <TasksView
             tasks={tasks}
             grade={currentGrade}
             taskCount={taskCount}
             showAnswers={showAnswers}
             showSolutions={showSolutions}
-            canEdit={plan.canEditTasks}
+            canEdit={plan.canEditTasks || isAdmin}
             canExport={plan.canExport}
             canPrint={plan.canPrint}
             onToggleAnswers={() => setShowAnswers((p) => !p)}
@@ -125,17 +286,35 @@ export default function App() {
             onReset={handleReset}
             onEditTask={handleEditTask}
             onLockedAction={handleLockedAction}
+            showTeacherFeedback={showTeacherFeedback}
+            sessionDifficulty={difficulty}
+            topicIds={generationMode === "topic" ? topicIds : undefined}
+            subtopicIds={generationMode === "topic" ? subtopicIds : undefined}
+            sourceHint={
+              showGenerationSourceHint() && generationMeta
+                ? `${generationMeta.bankCount} užduotys iš patvirtinto banko, ${generationMeta.aiCount} sugeneruota AI`
+                : undefined
+            }
+            onBankFeedback={handleBankFeedback}
+            onBankItemLinked={handleBankItemLinked}
           />
         ) : (
-          <div className="flex flex-col gap-12">
-            <div className="w-full max-w-5xl mx-auto space-y-6">
+          <div className="flex flex-col gap-10">
+            <div className="w-full max-w-3xl mx-auto space-y-5">
               <div className="space-y-2 text-center">
                 <h2 className="text-3xl font-bold text-slate-800 leading-tight">
                   Generuok matematikos <br />
                   <span className="text-blue-600">užduotis akimirksniu</span>
                 </h2>
                 <p className="text-slate-500 text-base max-w-2xl mx-auto">
-                  Pasirink klasę, sunkumą ir aprašyk, ko nori — AI sukurs užduotis pagal Lietuvos mokymo programą.
+                  Pasirink klasę, sunkumą ir būdą — pagal temą iš banko arba pagal savo aprašymą.{" "}
+                  <button
+                    type="button"
+                    onClick={goToGuide}
+                    className="text-blue-600 font-medium hover:underline"
+                  >
+                    Kaip tinkamai generuoti užduotis?
+                  </button>
                 </p>
               </div>
 
@@ -151,35 +330,49 @@ export default function App() {
                 taskCount={taskCount}
                 prompt={prompt}
                 difficulty={difficulty}
+                generationMode={generationMode}
                 imagePreview={imageBase64}
                 withDiagram={withDiagram}
                 withGraph={withGraph}
+                withSolution={withSolution}
                 loading={loading}
                 canUploadImage={plan.canUploadImage}
-                canSavarankiskas={plan.isPro}
                 maxTasksPerGeneration={plan.maxTasksPerGeneration}
                 onGradeChange={(v) => {
                   setGrade(v);
-                  if (v < 7) setWithDiagram(false);
+                  setSubtopicIds([]);
+                  setTopicIds([]);
+                  if (v > 6) setWithDiagram(false);
                   if (v < 9) setWithGraph(false);
                 }}
                 onTaskCountChange={setTaskCount}
                 onPromptChange={setPrompt}
                 onDifficultyChange={(v) => {
                   setDifficulty(v);
-                  if (v === "savarankiskas" && taskCount < SAVARANKISKAS_MIN_TASKS) {
-                    setTaskCount(SAVARANKISKAS_MIN_TASKS);
+                }}
+                onGenerationModeChange={(v) => {
+                  setGenerationMode(v);
+                  if (v === "topic") {
+                    setWithSolution(false);
+                    if (difficulty === "savarankiskas") setDifficulty("ivairus");
+                  } else if (difficulty === "savarankiskas") {
+                    setDifficulty("ivairus");
                   }
                 }}
                 onImageChange={setImageBase64}
                 onWithDiagramChange={setWithDiagram}
                 onWithGraphChange={setWithGraph}
+                onWithSolutionChange={setWithSolution}
                 onSubmit={handleGenerate}
                 onLockedAction={handleLockedAction}
+                selectedSubtopicIds={subtopicIds}
+                onSubtopicIdsChange={setSubtopicIds}
+                selectedTopicIds={topicIds}
+                onTopicIdsChange={setTopicIds}
               />
             </div>
 
-            <div className="w-full max-w-5xl mx-auto">
+            <div className="w-full max-w-3xl mx-auto">
               <HistoryPanel
                 sessions={sessions}
                 onSelect={handleSelectSession}
@@ -190,6 +383,9 @@ export default function App() {
       </main>
 
       {modal(goToPricing)}
+      {showRolePicker && (
+        <RolePickerModal onComplete={() => void refetchProfile()} />
+      )}
     </div>
   );
 }

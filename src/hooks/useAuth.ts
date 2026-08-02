@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { getAuthRedirectUrl, getSupabaseProjectRef } from '../lib/siteUrl';
 import type { User } from '@supabase/supabase-js';
+
+import type { UserRole } from '../lib/types';
 
 export interface Profile {
   id: string;
@@ -9,6 +12,7 @@ export interface Profile {
   plan: 'free' | 'pro';
   used_requests: number;
   used_tasks: number;
+  role: UserRole | null;
 }
 
 export function useAuth() {
@@ -78,12 +82,50 @@ export function useAuth() {
   }, []);
 
   const signInWithGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
+    const redirectTo = getAuthRedirectUrl();
+
+    if (import.meta.env.DEV) {
+      const ref = getSupabaseProjectRef();
+      console.info(
+        `[MatematikaAI] Google OAuth redirectTo: ${redirectTo}` +
+          (ref ? ` | Supabase projektas: ${ref}` : "") +
+          " — šis URL turi būti Redirect URLs sąraše Supabase dashboard.",
+      );
+    }
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
       options: {
-        redirectTo: window.location.origin,
+        redirectTo,
+        skipBrowserRedirect: false,
       },
     });
+    if (error) throw error;
+
+    if (import.meta.env.DEV && data?.url && !data.url.includes(encodeURIComponent(redirectTo))) {
+      console.warn(
+        "[MatematikaAI] OAuth URL galimai neįtraukia redirectTo — patikrinkite Supabase Redirect URLs.",
+        data.url,
+      );
+    }
+  };
+
+  const signInWithEmail = async (email: string) => {
+    const trimmed = email.trim();
+    if (!trimmed) {
+      throw new Error("Įveskite el. pašto adresą.");
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: trimmed,
+      options: {
+        emailRedirectTo: getAuthRedirectUrl(),
+      },
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
   };
 
   const signOut = async () => {
@@ -97,6 +139,7 @@ export function useAuth() {
     profile,
     loading,
     signInWithGoogle,
+    signInWithEmail,
     signOut,
     refetchProfile: () => user && fetchProfile(user.id),
   };

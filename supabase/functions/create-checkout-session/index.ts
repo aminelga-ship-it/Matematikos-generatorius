@@ -66,6 +66,21 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json();
     const plan = body?.plan as string;
+    const returnOriginRaw = typeof body?.returnOrigin === "string" ? body.returnOrigin.trim() : "";
+    const siteUrlFromEnv = (Deno.env.get("SITE_URL") ?? "").replace(/\/$/, "");
+    const defaultSite = siteUrlFromEnv || "https://math-generator.bolt.host";
+
+    let returnBase = defaultSite;
+    if (returnOriginRaw) {
+      try {
+        const parsed = new URL(returnOriginRaw);
+        if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+          returnBase = parsed.origin;
+        }
+      } catch {
+        // ignore invalid origin
+      }
+    }
 
     if (!plan || !(plan in PLAN_PRICE_MAP)) {
       return new Response(
@@ -96,8 +111,8 @@ Deno.serve(async (req: Request) => {
     const session = await stripe.checkout.sessions.create({
       mode,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `https://math-generator.bolt.host/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `https://math-generator.bolt.host/pricing`,
+      success_url: `${returnBase}/?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${returnBase}/?view=pricing`,
       customer_email: user.email ?? undefined,
       client_reference_id: user.id,
       metadata: { user_id: user.id, plan: typedPlan },

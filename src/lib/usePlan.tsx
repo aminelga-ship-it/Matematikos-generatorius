@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { isDevGuestAsPro } from './devFlags';
 import { Crown, X, ArrowRight } from 'lucide-react';
 
 export type PlanTier = 'guest' | 'free' | 'pro';
@@ -7,17 +8,32 @@ export type PlanTier = 'guest' | 'free' | 'pro';
 export function usePlan() {
   const { user, profile } = useAuth();
   const tier: PlanTier = !user ? 'guest' : profile?.plan === 'pro' ? 'pro' : 'free';
+  const devGuestAsPro = !user && isDevGuestAsPro();
+  const hasProFeatures = tier === 'pro' || devGuestAsPro;
+
   const isPro = tier === 'pro';
   const isGuest = tier === 'guest';
   const isFree = tier === 'free';
 
-  const canUploadImage = isPro;
-  const canEditTasks = isPro;
-  const canExport = isPro;
-  const canPrint = isPro;
-  const maxTasksPerGeneration = isPro ? 30 : 1;
+  const canUploadImage = hasProFeatures;
+  const canEditTasks = hasProFeatures;
+  const canExport = hasProFeatures;
+  const canPrint = hasProFeatures;
+  const maxTasksPerGeneration = hasProFeatures ? 15 : isGuest ? 3 : 1;
 
-  return { tier, isPro, isGuest, isFree, canUploadImage, canEditTasks, canExport, canPrint, maxTasksPerGeneration };
+  return {
+    tier,
+    isPro,
+    isGuest,
+    isFree,
+    devGuestAsPro,
+    hasProFeatures,
+    canUploadImage,
+    canEditTasks,
+    canExport,
+    canPrint,
+    maxTasksPerGeneration,
+  };
 }
 
 interface UpgradeModalProps {
@@ -56,8 +72,9 @@ export function UpgradeModal({ open, onClose, onUpgrade, featureName }: UpgradeM
             {[
               'Nuotraukų įkėlimas',
               'Užduočių redagavimas',
-              'PDF ir Word (.docx) eksportas',
-              'Iki 30 užduočių per generaciją',
+              'Word (.docx) eksportas (tik užduotys)',
+              'Spausdinimas',
+              'Iki 15 užduočių per generaciją',
               'Prioritetinis AI generavimas',
             ].map((f) => (
               <div key={f} className="flex items-center gap-2 text-sm text-slate-600">

@@ -43,9 +43,11 @@ function escapeHtml(s: string): string {
 }
 
 function renderKatex(latex: string, displayMode: boolean): string {
+  const useDisplay =
+    displayMode || /\\begin\{(cases|matrix|pmatrix|bmatrix|vmatrix|aligned|array)/.test(latex);
   try {
     return katex.renderToString(latex, {
-      displayMode,
+      displayMode: useDisplay,
       throwOnError: false,
       strict: false,
       trust: false,
@@ -56,8 +58,70 @@ function renderKatex(latex: string, displayMode: boolean): string {
   }
 }
 
+function normalizeDoubleBackslashes(text: string): string {
+  return text
+    .replace(/\\\\([a-zA-Z]+)/g, "\\$1")
+    .replace(/\\\\,/g, "\\,")
+    .replace(/\\\\!/g, "\\!")
+    .replace(/\\\\;/g, "\\;")
+    .replace(/\\\\:/g, "\\:");
+}
+
+/** Tekstas ne $...$ — papildomas matematikos apvalkalas (seed / rankinis bankas). */
+function enrichPlainTextMath(plain: string): string {
+  let s = plain;
+  s = s.replace(/(\d+(?:\{,\}\d+)?)\s*\^\s*(?:\\\\)+circ\b/g, (_, n: string) => `$${n}^\\circ$`);
+  s = s.replace(/(\d+(?:\{,\}\d+)?)\s*\^\s*\\circ\b/g, (_, n: string) => `$${n}^\\circ$`);
+  s = s.replace(/(\d+(?:\{,\}\d+)?)\s*°/g, (_, n: string) => `$${n}^\\circ$`);
+  s = s.replace(
+    /(\d+(?:\{,\}\d+)?)?\\sqrt\{([^}]+)\}/g,
+    (match) => (match.startsWith("$") ? match : `$${match}$`),
+  );
+  s = s.replace(/\\frac\{[^}]+\}\{[^}]+\}/g, (m) => (m.startsWith("$") ? m : `$${m}$`));
+  return s;
+}
+
+function mapOutsideMathDelimiters(text: string, fn: (plain: string) => string): string {
+  const re = /(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)/g;
+  const parts = text.split(re);
+  return parts.map((part) => (part.startsWith("$") ? part : fn(part))).join("");
+}
+
 function cleanPlainText(value: string): string {
   return value.replace(/[ \t]{2,}/g, " ");
+}
+
+/** AI kartais naudoja \\(...\\) be uždarymo ar \\begin{cases} — verčiame į $ / $$. */
+/** Pašalina eilučių lūžius \(...\) viduje ir atskiras `\)` eilutes. */
+function collapseBrokenLatexLines(text: string): string {
+  return text
+    .replace(/\\\(\s*\n+\s*/g, "\\(")
+    .replace(/\s*\n+\s*\\\)/g, "\\)")
+    .replace(/\n[ \t]*\\\)[ \t]*(?=\n|$)/g, "\\)")
+    .replace(/\$\s*\n+\s*/g, "$")
+    .replace(/\s*\n+\s*\$/g, "$");
+}
+
+function normalizeLatexDelimiters(text: string): string {
+  let s = collapseBrokenLatexLines(text);
+
+  s = s.replace(/\\\[([\s\S]*?)\\\]/g, (_, inner: string) => `$$${inner.trim()}$$`);
+
+  const toDelimited = (inner: string): string => {
+    const t = inner.trim();
+    if (/\\begin\{(cases|matrix|pmatrix|bmatrix|vmatrix|aligned|array)/.test(t)) {
+      return `$$${t}$$`;
+    }
+    return `$${t}$`;
+  };
+
+  s = s.replace(/\\\(([\s\S]*?)\\\)/g, (_, inner: string) => toDelimited(inner));
+
+  if (/\\\(/.test(s)) {
+    s = s.replace(/\\\(([\s\S]*)$/g, (_, inner: string) => toDelimited(inner));
+  }
+
+  return s;
 }
 
 // Repair broken LaTeX escapes that arise from JSON parsing single-backslash commands.
@@ -92,9 +156,13 @@ function repairBrokenEscapes(text: string): string {
     .replace(/(?<![\\a-zA-Z])neq(?!\w)/g, "\\neq");
 }
 
+function wrapPercentLiterals(text: string): string {
+  return text
+    .replace(/(\d+(?:[.,]\d+)?)\s*\/\s*(?=%)/g, "$1")
+    .replace(/(\d+(?:[.,]\d+)?)\s*%/g, (_, n: string) => `$${n}\\%$`);
+}
+
 // Convert bare n/m fractions in plain text to $\frac{n}{m}$ before rendering.
-// Matches patterns like 3/4, 12/5, 100/7 — integers only, to avoid false
-// positives on dates (2024/01) or division expressions already in LaTeX.
 function fixSlashFractions(text: string): string {
   return text.replace(/\b(\d{1,4})\/(\d{1,4})\b/g, (_, n, d) => `$\\frac{${n}}{${d}}$`);
 }
@@ -129,7 +197,13 @@ function renderPlainSegment(text: string): React.ReactNode {
 export const MathText: React.FC<MathTextProps> = ({ text, className }) => {
   const nodes = useMemo(() => {
     if (!text) return null;
-    const preprocessed = repairBrokenEscapes(fixSlashFractions(text));
+    const preprocessed = normalizeLatexDelimiters(
+      repairBrokenEscapes(
+        normalizeDoubleBackslashes(
+          mapOutsideMathDelimiters(wrapPercentLiterals(fixSlashFractions(text)), enrichPlainTextMath),
+        ),
+      ),
+    );
     return parseSegments(preprocessed).map((seg, i) => {
       if (seg.kind === "display") {
         return (

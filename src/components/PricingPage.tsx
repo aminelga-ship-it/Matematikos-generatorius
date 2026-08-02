@@ -1,11 +1,12 @@
-import React from 'react';
+﻿import React, { useState, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { createCheckoutSession, type CheckoutPlan } from '../lib/api';
 import {
   Check,
   X,
   Plus,
-  ArrowLeft,
   Calendar,
+  Loader2,
 } from 'lucide-react';
 
 type PlanKey = 'guest' | 'free' | 'pro';
@@ -21,13 +22,12 @@ const FEATURE_ROWS: FeatureRow[] = [
   { label: 'Prisijungimas', guest: 'Nereikia', free: 'Reikalingas', pro: 'Reikalingas' },
   { label: 'Užklausų limitas', guest: '3 iš viso', free: '3 per dieną', pro: 'Be dienos limito' },
   { label: 'Mėnesinis limitas', guest: '—', free: '10 užklausų / mėn.', pro: '100 užklausų / mėn.' },
-  { label: 'Užduočių limitas', guest: '1 per generaciją', free: '1 per generatiją', pro: '30 per generaciją' },
+  { label: 'Užduočių limitas', guest: '1 per generaciją', free: '1 per generatiją', pro: '15 per generaciją' },
   { label: 'Mėnesinis užduočių limitas', guest: '—', free: '—', pro: '300 užduočių / mėn.' },
   { label: 'Geometrijos brėžiniai', guest: true, free: true, pro: true },
   { label: 'GeoGebra grafikai', guest: true, free: true, pro: true },
   { label: 'Nuotraukos įkėlimas', guest: false, free: false, pro: true },
   { label: 'Užduočių redagavimas', guest: false, free: false, pro: true },
-  { label: 'PDF eksportas', guest: false, free: false, pro: true },
   { label: 'Word (.docx) eksportas', guest: false, free: false, pro: true },
   { label: 'Prioritetinis AI generavimas', guest: false, free: false, pro: true },
 ];
@@ -51,7 +51,8 @@ const PlanCard: React.FC<{
   onAction?: () => void;
   actionLabel: string;
   actionDisabled?: boolean;
-}> = ({ name, tagline, price, period, note, features, highlight, current, badge, onAction, actionLabel, actionDisabled }) => {
+  actionLoading?: boolean;
+}> = ({ name, tagline, price, period, note, features, highlight, current, badge, onAction, actionLabel, actionDisabled, actionLoading }) => {
   return (
     <div
       className={`relative flex flex-col rounded-2xl border bg-white transition-all duration-300 ${
@@ -97,16 +98,18 @@ const PlanCard: React.FC<{
         </ul>
 
         <button
+          type="button"
           onClick={onAction}
-          disabled={actionDisabled}
-          className={`mt-6 w-full py-2.5 rounded-xl font-semibold text-sm transition ${
-            actionDisabled
+          disabled={actionDisabled || actionLoading}
+          className={`mt-6 w-full py-2.5 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2 ${
+            actionDisabled || actionLoading
               ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
               : highlight
               ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
               : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
           }`}
         >
+          {actionLoading && <Loader2 size={16} className="animate-spin" />}
           {actionLabel}
         </button>
       </div>
@@ -114,10 +117,32 @@ const PlanCard: React.FC<{
   );
 };
 
-export const PricingPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const { user, profile } = useAuth();
+export const PricingPage: React.FC = () => {
+  const { user, profile, signInWithGoogle } = useAuth();
+  const [checkoutLoading, setCheckoutLoading] = useState<CheckoutPlan | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const currentPlan: PlanKey = !user ? 'guest' : profile?.plan === 'pro' ? 'pro' : 'free';
+
+  const startCheckout = useCallback(async (plan: CheckoutPlan) => {
+    setCheckoutError(null);
+
+    if (!user) {
+      await signInWithGoogle();
+      return;
+    }
+
+    if (currentPlan === 'pro') return;
+
+    setCheckoutLoading(plan);
+    try {
+      const url = await createCheckoutSession(plan);
+      window.location.assign(url);
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : 'Nepavyko pradėti mokėjimo.');
+      setCheckoutLoading(null);
+    }
+  }, [user, currentPlan, signInWithGoogle]);
 
   const guestFeatures = [
     { text: 'Iki 3 užklausų iš viso', included: true },
@@ -143,37 +168,27 @@ export const PricingPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const proFeatures = [
     { text: 'Be dienos limito', included: true },
     { text: '100 užklausų / 300 užduočių per mėn.', included: true },
-    { text: 'Iki 30 užduočių per generatiją', included: true },
+    { text: 'Iki 15 užduočių per generatiją', included: true },
     { text: 'Nuotraukos įkėlimas', included: true },
     { text: 'Užduočių redagavimas', included: true },
-    { text: 'PDF eksportas', included: true },
     { text: 'Word (.docx) eksportas', included: true },
     { text: 'Prioritetinis AI generavimas', included: true },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header bar */}
-      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-sm sticky top-0 z-50">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 text-sm font-medium transition"
-        >
-          <ArrowLeft size={18} />
-          Atgal
-        </button>
-        <span className="text-lg font-bold text-indigo-600">MatematikaAI</span>
-        <div className="w-16" />
-      </header>
-
-      <main className="max-w-6xl mx-auto px-6 py-12">
-        {/* Title */}
-        <div className="text-center max-w-2xl mx-auto mb-12">
+    <div className="py-4 max-w-6xl mx-auto w-full">
+      <div className="text-center max-w-2xl mx-auto mb-10">
           <h1 className="text-4xl font-bold text-slate-800">Planai ir kainos</h1>
           <p className="text-slate-500 mt-3 text-lg">
             Pasirink tinkamiausią planą. Galite pradėti nemokamai ir bet kada atsinaujinti į PRO.
           </p>
         </div>
+
+        {checkoutError && (
+          <div className="mt-6 max-w-2xl mx-auto px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-sm text-red-700 text-center">
+            {checkoutError}
+          </div>
+        )}
 
         {/* Plan cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
@@ -197,7 +212,7 @@ export const PricingPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             current={currentPlan === 'free'}
             actionLabel={currentPlan === 'free' ? 'Dabartinis planas' : currentPlan === 'guest' ? 'Prisijungti' : 'Dabartinis planas'}
             actionDisabled={currentPlan !== 'guest'}
-            onAction={currentPlan === 'guest' ? onBack : undefined}
+            onAction={currentPlan === 'guest' ? () => void signInWithGoogle() : undefined}
           />
 
           <PlanCard
@@ -210,33 +225,59 @@ export const PricingPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             highlight
             badge="POPULARIAUSIAS"
             current={currentPlan === 'pro'}
-            actionLabel={currentPlan === 'pro' ? 'Dabartinis planas' : 'Atnaujinti į PRO'}
+            actionLabel={
+              currentPlan === 'pro'
+                ? 'Dabartinis planas'
+                : checkoutLoading === 'PRO mėnesinis'
+                  ? 'Nukreipiama…'
+                  : 'Atnaujinti į PRO'
+            }
             actionDisabled={currentPlan === 'pro'}
+            actionLoading={checkoutLoading === 'PRO mėnesinis'}
+            onAction={() => startCheckout('PRO mėnesinis')}
           />
         </div>
 
         {/* PRO payment options */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-6 flex items-start gap-4">
-            <div className="p-3 rounded-xl bg-blue-100 text-blue-600">
+          <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="p-3 rounded-xl bg-blue-100 text-blue-600 flex-shrink-0">
               <Calendar size={22} />
             </div>
-            <div>
+            <div className="flex-1">
               <h4 className="font-semibold text-slate-800">Mėnesinis PRO</h4>
               <p className="text-2xl font-bold text-slate-800 mt-1">6.99 € <span className="text-sm font-normal text-slate-500">/ mėn.</span></p>
               <p className="text-sm text-slate-500 mt-1">Galioja 30 dienų nuo pirkimo datos. Automatiškai atsinaujina.</p>
             </div>
+            <button
+              type="button"
+              disabled={currentPlan === 'pro' || checkoutLoading !== null}
+              onClick={() => startCheckout('PRO mėnesinis')}
+              className="flex-shrink-0 px-5 py-2.5 rounded-xl font-semibold text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 transition flex items-center justify-center gap-2"
+            >
+              {checkoutLoading === 'PRO mėnesinis' ? <Loader2 size={16} className="animate-spin" /> : null}
+              {currentPlan === 'pro' ? 'Aktyvuota' : 'Pasirinkti'}
+            </button>
           </div>
 
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-6 flex items-start gap-4">
-            <div className="p-3 rounded-xl bg-emerald-100 text-emerald-600">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="p-3 rounded-xl bg-emerald-100 text-emerald-600 flex-shrink-0">
               <Calendar size={22} />
             </div>
-            <div>
+            <div className="flex-1">
               <h4 className="font-semibold text-slate-800">Mokslo metų PRO</h4>
               <p className="text-2xl font-bold text-slate-800 mt-1">29.99 € <span className="text-sm font-normal text-slate-500">/ mokslo metus</span></p>
               <p className="text-sm text-slate-500 mt-1">Fiksuota galiojimo data: 2027-06-30, nepriklausomai nuo pirkimo datos.</p>
             </div>
+            <button
+              type="button"
+              disabled={currentPlan === 'pro' || checkoutLoading !== null}
+              onClick={() => startCheckout('PRO mokslo metų')}
+              className="flex-shrink-0 px-5 py-2.5 rounded-xl font-semibold text-sm bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 transition flex items-center justify-center gap-2"
+            >
+              {checkoutLoading === 'PRO mokslo metų' ? <Loader2 size={16} className="animate-spin" /> : null}
+              {currentPlan === 'pro' ? 'Aktyvuota' : 'Pasirinkti'}
+            </button>
           </div>
         </div>
 
@@ -291,10 +332,9 @@ export const PricingPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </div>
         </div>
 
-        <p className="text-center text-xs text-slate-400 mt-12">
+        <p className="text-center text-xs text-slate-400 mt-10">
           Kainos nurodytos su PVM. Mokėjimai apdorojami per Stripe. Testinis režimas — realūs mokėjimai neimami.
         </p>
-      </main>
     </div>
   );
 };

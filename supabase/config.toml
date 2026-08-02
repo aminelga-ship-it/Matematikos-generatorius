@@ -1,0 +1,12 @@
+# Supabase CLI — susietas su projektu per `supabase link` (exhvdabihqsffvsqfnbl).
+# Deploy: npx supabase functions deploy generate-tasks
+# Nenaudokite --project-ref grwhmjllujwtmpwykswh (Bolt) — CLI neturi teisių (403).
+
+[project]
+id = "exhvdabihqsffvsqfnbl"
+
+[functions.generate-tasks]
+verify_jwt = false
+
+[functions.create-checkout-session]
+verify_jwt = false

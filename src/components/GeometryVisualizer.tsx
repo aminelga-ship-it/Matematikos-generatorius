@@ -8,9 +8,77 @@ interface Props {
 const VALID_TYPES: DiagramType[] = [
   'SQUARE', 'RECTANGLE', 'RHOMBUS', 'PARALLELOGRAM', 'TRAPEZOID',
   'RIGHT_TRIANGLE', 'TRIANGLE', 'CIRCLE',
+  'SIMILAR_TRIANGLES', 'CONGRUENT_TRIANGLES',
   'CUBE', 'CUBOID', 'SQUARE_PYRAMID', 'TRIANGULAR_PYRAMID',
   'CONE', 'CYLINDER',
 ];
+
+function pickLabel(labels: Record<string, string>, keys: string[]): string | null {
+  for (const k of keys) {
+    const raw = labels[k];
+    if (raw == null) continue;
+    const v = String(raw).trim();
+    if (!v || v === "?") continue;
+    if (/^cm$/i.test(v) || /^mm$/i.test(v) || /^m$/i.test(v)) continue;
+    return v;
+  }
+  return null;
+}
+
+function SideLabel({
+  text,
+  x,
+  y,
+  anchor = "middle",
+}: {
+  text: string | null;
+  x: number;
+  y: number;
+  anchor?: "start" | "middle" | "end";
+}) {
+  if (!text) return null;
+  return (
+    <text x={x} y={y} textAnchor={anchor} className="fill-slate-800 font-semibold stroke-none text-[12px]">
+      {text}
+    </text>
+  );
+}
+
+/** Statusis trikampis: statinis kairėje, pagrindas apačioje, įstrižainė — c arba X. */
+function RightTriangleFigure({
+  vx,
+  vy,
+  legH,
+  legW,
+  labels,
+  prefixKeys,
+}: {
+  vx: number;
+  vy: number;
+  legH: number;
+  legW: number;
+  labels: Record<string, string>;
+  prefixKeys: { vert: string[]; horiz: string[]; hyp: string[] };
+}) {
+  const bx = vx + legW;
+  const by = vy + legH;
+  const vert = pickLabel(labels, prefixKeys.vert);
+  const horiz = pickLabel(labels, prefixKeys.horiz);
+  const hyp = pickLabel(labels, prefixKeys.hyp);
+
+  const hypMidX = (vx + bx) / 2 + 8;
+  const hypMidY = (vy + by) / 2 - 6;
+
+  return (
+    <g>
+      <polygon points={`${vx},${vy} ${vx},${by} ${bx},${by}`} className="fill-slate-50 stroke-slate-800 stroke-2" />
+      <path d={`M ${vx},${by} L ${vx},${by - 14} L ${vx + 14},${by}`} className="stroke-slate-600 stroke-1 fill-none" />
+      <SideLabel text={vert} x={vx + 12} y={(vy + by) / 2 + 4} anchor="start" />
+      <SideLabel text={horiz} x={(vx + bx) / 2} y={by + 18} anchor="middle" />
+      <SideLabel text={hyp} x={hypMidX} y={hypMidY} anchor="start" />
+    </g>
+  );
+}
 
 export const GeometryVisualizer: React.FC<Props> = ({ config }) => {
   const shape = (config.type ?? '').toUpperCase().trim() as DiagramType;
@@ -23,10 +91,10 @@ export const GeometryVisualizer: React.FC<Props> = ({ config }) => {
   return (
     <div className="flex flex-col items-center justify-center p-4 bg-white rounded-lg border border-gray-200 my-4 shadow-sm select-none">
       <svg
-        width="280"
-        height="220"
-        viewBox="0 0 280 220"
-        className="stroke-slate-800 fill-none stroke-2 text-xs font-sans text-slate-800"
+        width="320"
+        height="200"
+        viewBox="0 0 340 200"
+        className="stroke-slate-800 fill-none stroke-2 text-xs font-sans text-slate-800 overflow-visible"
       >
         {/* ==================== 2D FIGŪROS ==================== */}
 
@@ -90,6 +158,67 @@ export const GeometryVisualizer: React.FC<Props> = ({ config }) => {
             {labels.a && <text x="50" y="110" textAnchor="end" className="fill-slate-800 font-semibold stroke-none">{labels.a}</text>}
             {labels.b && <text x="135" y="188" textAnchor="middle" className="fill-slate-800 font-semibold stroke-none">{labels.b}</text>}
             {labels.c && <text x="145" y="100" textAnchor="start" className="fill-slate-800 font-semibold stroke-none">{labels.c}</text>}
+            {!labels.c && labels.X && <text x="145" y="100" textAnchor="start" className="fill-slate-800 font-semibold stroke-none">{labels.X}</text>}
+          </g>
+        )}
+
+        {/* Panašūs statusieji trikampiai (kairė mažesnė, dešinė didesnė) */}
+        {shape === 'SIMILAR_TRIANGLES' && (
+          <g>
+            <RightTriangleFigure
+              vx={42}
+              vy={42}
+              legH={88}
+              legW={72}
+              labels={labels}
+              prefixKeys={{
+                vert: ["left_a", "a1"],
+                horiz: ["left_b", "b1"],
+                hyp: ["left_c", "left_X", "X"],
+              }}
+            />
+            <RightTriangleFigure
+              vx={168}
+              vy={28}
+              legH={112}
+              legW={118}
+              labels={labels}
+              prefixKeys={{
+                vert: ["right_a", "right_X", "a2"],
+                horiz: ["right_b", "b2", "b"],
+                hyp: ["right_c", "c2", "c"],
+              }}
+            />
+          </g>
+        )}
+
+        {/* Lygūs trikampiai */}
+        {shape === 'CONGRUENT_TRIANGLES' && (
+          <g>
+            <RightTriangleFigure
+              vx={24}
+              vy={40}
+              legH={90}
+              legW={78}
+              labels={labels}
+              prefixKeys={{
+                vert: ["left_a", "a1", "a"],
+                horiz: ["left_b", "b1", "b"],
+                hyp: ["left_c", "c1", "c", "X"],
+              }}
+            />
+            <RightTriangleFigure
+              vx={168}
+              vy={40}
+              legH={90}
+              legW={78}
+              labels={labels}
+              prefixKeys={{
+                vert: ["right_a", "a2"],
+                horiz: ["right_b", "b2"],
+                hyp: ["right_c", "c2"],
+              }}
+            />
           </g>
         )}
 

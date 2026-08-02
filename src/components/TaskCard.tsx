@@ -3,7 +3,9 @@ import { ChevronDown, ChevronUp, CheckCircle, BookOpen, Pencil, Check, X } from 
 import { MathText } from "./MathText";
 import { GeometryVisualizer } from "./GeometryVisualizer";
 import { GeoGebraGraph } from './GeoGebraGraph';
-import type { Task } from "../lib/types";
+import type { Task, Difficulty } from "../lib/types";
+import { fixDiagramQuestionText } from "../lib/fixDiagramQuestion";
+import { TeacherTaskFeedback } from "./TeacherTaskFeedback";
 
 interface TaskCardProps {
   task: Task;
@@ -12,47 +14,76 @@ interface TaskCardProps {
   showSolutions: boolean;
   canEdit?: boolean;
   onEdit?: (index: number, updated: Task) => void;
+  showTeacherFeedback?: boolean;
+  grade?: number;
+  sessionDifficulty?: Difficulty;
+  topicIds?: string[];
+  subtopicIds?: string[];
+  onBankFeedback?: (index: number, result: "approved" | "draft" | "deleted") => void;
+  onBankItemLinked?: (index: number, bankItemId: string) => void;
 }
 
-// Split task question into sub-parts a), b), c)… each on its own line.
-// Only splits on sub-part markers that appear OUTSIDE of $...$ math blocks.
+// Split task question into sub-parts a), b), c) or A), B), C)… each on its own line.
+// Does not split on digits like "3)" inside formulas (e.g. (y − 3)).
 function splitSubParts(text: string): { label: string | null; content: string }[] {
+  const normalized = text
+    .replace(/\\\(\s*\n+\s*/g, "\\(")
+    .replace(/\s*\n+\s*\\\)/g, "\\)")
+    .replace(/\n[ \t]*\\\)[ \t]*(?=\n|$)/g, "\\)");
+
   const mathRanges: [number, number][] = [];
-  for (const m of text.matchAll(/\$\$[\s\S]+?\$\$|\$[^$\n]+?\$/g)) {
+  for (const m of normalized.matchAll(/\$\$[\s\S]+?\$\$|\$[^$\n]+?\$|\\\([\s\S]+?\\\)/g)) {
     mathRanges.push([m.index!, m.index! + m[0].length]);
   }
   const inMath = (pos: number) => mathRanges.some(([s, e]) => pos >= s && pos < e);
 
-  const splitRe = /(?:[\n]|(?<=\s))(?=[a-žA-Ž]\)|\d+\))/g;
   const splitPoints: number[] = [];
-  for (const m of text.matchAll(splitRe)) {
-    if (!inMath(m.index!)) splitPoints.push(m.index!);
+
+  for (const m of normalized.matchAll(/\n\s*(?=(?:[a-z]\)|\d{1,2}\)))/g)) {
+    const pos = m.index!;
+    if (!inMath(pos + 1)) splitPoints.push(pos);
   }
 
-  if (splitPoints.length === 0) {
-    const trimmed = text.trim();
-    const labelMatch = trimmed.match(/^([a-žA-Ž]\)|[0-9]+\))\s*/);
+  for (const m of normalized.matchAll(/(?<=\s)(?=[A-D]\)\s)/g)) {
+    const pos = m.index!;
+    if (!inMath(pos)) splitPoints.push(pos);
+  }
+
+  for (const m of normalized.matchAll(/(?<=[?.!])\s*(?=[A-D](?:\)|\s))/g)) {
+    const pos = m.index!;
+    if (!inMath(pos)) splitPoints.push(pos);
+  }
+
+  const unique = [...new Set(splitPoints)].sort((a, b) => a - b);
+
+  if (unique.length === 0) {
+    const trimmed = normalized.trim();
+    const labelMatch = trimmed.match(/^([a-z]\)|[A-D]\)|\d{1,2}\))\s*/);
     if (labelMatch) {
-      return [{ label: labelMatch[1], content: trimmed.slice(labelMatch[0].length) }];
+      return [{ label: labelMatch[1], content: trimmed.slice(labelMatch[0].length).trim() }];
     }
     return trimmed ? [{ label: null, content: trimmed }] : [];
   }
 
   const chunks: string[] = [];
   let prev = 0;
-  for (const pos of splitPoints) {
-    const chunk = text.slice(prev, pos).trim();
+  for (const pos of unique) {
+    const chunk = normalized.slice(prev, pos).trim();
     if (chunk) chunks.push(chunk);
     prev = pos;
   }
-  const last = text.slice(prev).trim();
+  const last = normalized.slice(prev).trim();
   if (last) chunks.push(last);
 
   return chunks
     .map((chunk) => {
-      const labelMatch = chunk.match(/^([a-žA-Ž]\)|[0-9]+\))\s*/);
+      const labelMatch = chunk.match(/^([a-z]\)|[A-D]\)|\d{1,2}\))\s*/);
       if (labelMatch) {
         return { label: labelMatch[1], content: chunk.slice(labelMatch[0].length).trim() };
+      }
+      const mcLetter = chunk.match(/^([A-D])\s+(?=\S)/);
+      if (mcLetter) {
+        return { label: `${mcLetter[1]})`, content: chunk.slice(mcLetter[0].length).trim() };
       }
       return { label: null, content: chunk };
     })
@@ -71,27 +102,28 @@ const CARD_ACCENT_COLORS = [
   "border-l-indigo-500",
 ];
 
-export function TaskCard({ task, index, showAnswers, showSolutions, canEdit, onEdit }: TaskCardProps) {
+export function TaskCard({ task, index, showAnswers, showSolutions, canEdit, onEdit, showTeacherFeedback, grade, sessionDifficulty, topicIds, subtopicIds, onBankFeedback, onBankItemLinked }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<Task>(task);
+  const [draftQuestion, setDraftQuestion] = useState(task.question);
 
   const accentColor = CARD_ACCENT_COLORS[index % CARD_ACCENT_COLORS.length];
-  const subParts = splitSubParts(editing ? draft.question : task.question);
-  const solutionLines = parseSolutionLines(editing ? draft.solution : task.solution);
+  const displayQuestion = fixDiagramQuestionText(task.question, task.diagram_config);
+  const subParts = splitSubParts(editing ? draftQuestion : displayQuestion);
+  const solutionLines = parseSolutionLines(task.solution);
 
   const startEdit = () => {
-    setDraft(task);
+    setDraftQuestion(task.question);
     setEditing(true);
   };
 
   const saveEdit = () => {
-    onEdit?.(index, draft);
+    onEdit?.(index, { ...task, question: draftQuestion });
     setEditing(false);
   };
 
   const cancelEdit = () => {
-    setDraft(task);
+    setDraftQuestion(task.question);
     setEditing(false);
   };
 
@@ -118,35 +150,32 @@ export function TaskCard({ task, index, showAnswers, showSolutions, canEdit, onE
               <div className="space-y-3">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                    Klausimas
+                    Peržiūra
                   </label>
-                  <textarea
-                    value={draft.question}
-                    onChange={(e) => setDraft({ ...draft, question: e.target.value })}
-                    rows={4}
-                    className="w-full px-3 py-2 text-sm text-slate-700 border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  />
+                  <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5 min-h-[3rem]">
+                    {splitSubParts(draftQuestion).map((part, i) => (
+                      <div key={i} className={part.label ? "flex items-baseline gap-2.5" : ""}>
+                        {part.label && (
+                          <span className="flex-shrink-0 font-bold text-blue-600 text-[14px] min-w-[1.6rem]">
+                            {part.label}
+                          </span>
+                        )}
+                        <span className="text-slate-800 text-[15px] leading-[1.75]">
+                          <MathText text={part.content || " "} />
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                    Atsakymas
-                  </label>
-                  <input
-                    type="text"
-                    value={draft.answer}
-                    onChange={(e) => setDraft({ ...draft, answer: e.target.value })}
-                    className="w-full px-3 py-2 text-sm text-slate-700 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                    Sprendimas
+                    Užduoties tekstas (LaTeX: $…$)
                   </label>
                   <textarea
-                    value={draft.solution}
-                    onChange={(e) => setDraft({ ...draft, solution: e.target.value })}
-                    rows={4}
-                    className="w-full px-3 py-2 text-sm text-slate-700 border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
+                    value={draftQuestion}
+                    onChange={(e) => setDraftQuestion(e.target.value)}
+                    rows={5}
+                    className="w-full px-3 py-2 text-sm font-mono text-slate-700 border border-slate-200 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-blue-300"
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -204,6 +233,20 @@ export function TaskCard({ task, index, showAnswers, showSolutions, canEdit, onE
                 {Boolean(task.function_equation && task.function_equation.trim() !== '') && (
                   <GeoGebraGraph equation={task.function_equation} />
                 )}
+
+                {showTeacherFeedback && grade != null && (
+                  <TeacherTaskFeedback
+                    bankItemId={task.bank_item_id}
+                    grade={grade}
+                    task={task}
+                    taskIndex={index}
+                    sessionDifficulty={sessionDifficulty}
+                    topicIds={topicIds}
+                    subtopicIds={subtopicIds}
+                    onBankItemLinked={(id) => onBankItemLinked?.(index, id)}
+                    onResolved={(result) => onBankFeedback?.(index, result)}
+                  />
+                )}
               </>
             )}
           </div>
@@ -226,7 +269,7 @@ export function TaskCard({ task, index, showAnswers, showSolutions, canEdit, onE
       )}
 
       {/* Solution accordion */}
-      {showSolutions && !editing && (
+      {showSolutions && !editing && task.solution.trim().length > 0 && (
         <div className="border-t border-slate-100">
           <button
             onClick={() => setExpanded((p) => !p)}

@@ -1,11 +1,12 @@
 
 import {
   Eye, EyeOff, BookOpen, BookX, Printer, RotateCcw, GraduationCap,
-  FileText, FileType2, Lock,
+  FileType2, Lock,
 } from "lucide-react";
 import { TaskCard } from "./TaskCard";
-import type { Task } from "../lib/types";
-import { exportToWord, exportToPDF } from "../lib/export";
+import type { Task, Difficulty } from "../lib/types";
+import { tasksIncludeSolutions } from "../lib/types";
+import { exportToWord } from "../lib/export";
 
 interface TasksViewProps {
   tasks: Task[];
@@ -21,6 +22,13 @@ interface TasksViewProps {
   onReset: () => void;
   onEditTask: (index: number, updated: Task) => void;
   onLockedAction: (featureName: string) => void;
+  showTeacherFeedback?: boolean;
+  sessionDifficulty?: Difficulty;
+  topicIds?: string[];
+  subtopicIds?: string[];
+  sourceHint?: string;
+  onBankFeedback?: (index: number, result: "approved" | "draft" | "deleted") => void;
+  onBankItemLinked?: (index: number, bankItemId: string) => void;
 }
 
 export function TasksView({
@@ -36,7 +44,16 @@ export function TasksView({
   onReset,
   onEditTask,
   onLockedAction,
+  showTeacherFeedback,
+  sessionDifficulty,
+  topicIds,
+  subtopicIds,
+  sourceHint,
+  onBankFeedback,
+  onBankItemLinked,
 }: TasksViewProps) {
+  const hasSolutions = tasksIncludeSolutions(tasks);
+
   return (
     <div className="space-y-5">
       {/* Toolbar */}
@@ -68,34 +85,22 @@ export function TasksView({
             {showAnswers ? "Slėpti atsakymus" : "Atsakymai"}
           </button>
 
-          <button
-            onClick={onToggleSolutions}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
-              showSolutions
-                ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
-            }`}
-          >
-            {showSolutions ? <BookOpen size={13} /> : <BookX size={13} />}
-            {showSolutions ? "Slėpti sprendimus" : "Sprendimai"}
-          </button>
+          {hasSolutions && (
+            <button
+              onClick={onToggleSolutions}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
+                showSolutions
+                  ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                  : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+              }`}
+            >
+              {showSolutions ? <BookOpen size={13} /> : <BookX size={13} />}
+              {showSolutions ? "Slėpti sprendimus" : "Sprendimai"}
+            </button>
+          )}
 
           <div className="w-px h-5 bg-slate-200 mx-1" />
 
-          {/* PDF export */}
-          <button
-            onClick={() => canExport ? exportToPDF(tasks, grade) : onLockedAction("PDF eksportas")}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
-              canExport
-                ? "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
-                : "border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100"
-            }`}
-          >
-            {canExport ? <FileText size={13} /> : <Lock size={12} />}
-            PDF
-          </button>
-
-          {/* Word export */}
           <button
             onClick={() => canExport ? exportToWord(tasks, grade) : onLockedAction("Word (.docx) eksportas")}
             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
@@ -108,7 +113,6 @@ export function TasksView({
             Word
           </button>
 
-          {/* Print */}
           <button
             onClick={() => canPrint ? window.print() : onLockedAction("Spausdinimas")}
             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
@@ -131,6 +135,12 @@ export function TasksView({
         </div>
       </div>
 
+      {sourceHint && (
+        <p className="text-sm text-violet-700 bg-violet-50 border border-violet-100 rounded-xl px-4 py-2.5">
+          {sourceHint}
+        </p>
+      )}
+
       {/* Task list */}
       <div className="space-y-3">
         {tasks.map((task, i) => (
@@ -139,9 +149,16 @@ export function TasksView({
             task={task}
             index={i}
             showAnswers={showAnswers}
-            showSolutions={showSolutions}
+            showSolutions={hasSolutions && showSolutions}
             canEdit={canEdit}
             onEdit={onEditTask}
+            showTeacherFeedback={showTeacherFeedback}
+            grade={grade}
+            sessionDifficulty={sessionDifficulty}
+            topicIds={topicIds}
+            subtopicIds={subtopicIds}
+            onBankFeedback={onBankFeedback}
+            onBankItemLinked={onBankItemLinked}
           />
         ))}
       </div>
