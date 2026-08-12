@@ -106,6 +106,11 @@ export function TaskCard({ task, index, showAnswers, showSolutions, canEdit, onE
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draftQuestion, setDraftQuestion] = useState(task.question);
+  const [draftFunctionEquation, setDraftFunctionEquation] = useState(task.function_equation ?? "");
+  const [draftDiagramRemoved, setDraftDiagramRemoved] = useState(false);
+
+  const hasGraph = Boolean(task.function_equation && task.function_equation.trim() !== "");
+  const hasDiagram = Boolean(task.diagram_config && !draftDiagramRemoved);
 
   const accentColor = CARD_ACCENT_COLORS[index % CARD_ACCENT_COLORS.length];
   const displayQuestion = fixDiagramQuestionText(task.question, task.diagram_config);
@@ -114,17 +119,35 @@ export function TaskCard({ task, index, showAnswers, showSolutions, canEdit, onE
 
   const startEdit = () => {
     setDraftQuestion(task.question);
+    setDraftFunctionEquation(task.function_equation ?? "");
+    setDraftDiagramRemoved(false);
     setEditing(true);
   };
 
   const saveEdit = () => {
-    onEdit?.(index, { ...task, question: draftQuestion });
+    const trimmedEq = draftFunctionEquation.trim();
+    onEdit?.(index, {
+      ...task,
+      question: draftQuestion,
+      function_equation: trimmedEq.length > 0 ? trimmedEq : undefined,
+      diagram_config: draftDiagramRemoved ? undefined : task.diagram_config,
+    });
     setEditing(false);
   };
 
   const cancelEdit = () => {
     setDraftQuestion(task.question);
+    setDraftFunctionEquation(task.function_equation ?? "");
+    setDraftDiagramRemoved(false);
     setEditing(false);
+  };
+
+  const removeGraph = () => {
+    setDraftFunctionEquation("");
+  };
+
+  const removeDiagram = () => {
+    setDraftDiagramRemoved(true);
   };
 
   return (
@@ -145,7 +168,7 @@ export function TaskCard({ task, index, showAnswers, showSolutions, canEdit, onE
           </div>
 
           {/* Question content */}
-          <div className="flex-1 pt-0.5 space-y-1.5">
+          <div className="flex-1 min-w-0 pt-0.5 space-y-1.5">
             {editing ? (
               <div className="space-y-3">
                 <div>
@@ -178,6 +201,45 @@ export function TaskCard({ task, index, showAnswers, showSolutions, canEdit, onE
                     className="w-full px-3 py-2 text-sm font-mono text-slate-700 border border-slate-200 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-blue-300"
                   />
                 </div>
+                {(hasGraph || draftFunctionEquation.trim() !== "") && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                      GeoGebra lygtis
+                    </label>
+                    <input
+                      type="text"
+                      value={draftFunctionEquation}
+                      onChange={(e) => setDraftFunctionEquation(e.target.value)}
+                      placeholder="pvz. y=sqrt(ln(2*x-3))"
+                      className="w-full px-3 py-2 text-sm font-mono text-slate-700 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeGraph}
+                      className="mt-2 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline"
+                    >
+                      Pašalinti grafiką
+                    </button>
+                  </div>
+                )}
+                {task.diagram_config && !draftDiagramRemoved && (
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                      Brėžinys
+                    </p>
+                    <p className="text-xs text-slate-600 mb-2">Užduotyje yra geometrijos brėžinys.</p>
+                    <button
+                      type="button"
+                      onClick={removeDiagram}
+                      className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline"
+                    >
+                      Ištrinti brėžinį
+                    </button>
+                  </div>
+                )}
+                {draftDiagramRemoved && task.diagram_config && (
+                  <p className="text-xs text-amber-700">Brėžinys bus pašalintas išsaugojus.</p>
+                )}
                 <div className="flex items-center gap-2">
                   <button
                     onClick={saveEdit}
@@ -225,15 +287,6 @@ export function TaskCard({ task, index, showAnswers, showSolutions, canEdit, onE
                   )}
                 </div>
 
-                {/* Geometry diagram */}
-                {task.diagram_config && (
-                  <GeometryVisualizer config={task.diagram_config} />
-                )}
-                {/* Interaktyvus GeoGebra grafikas */}
-                {Boolean(task.function_equation && task.function_equation.trim() !== '') && (
-                  <GeoGebraGraph equation={task.function_equation} />
-                )}
-
                 {showTeacherFeedback && grade != null && (
                   <TeacherTaskFeedback
                     bankItemId={task.bank_item_id}
@@ -251,6 +304,17 @@ export function TaskCard({ task, index, showAnswers, showSolutions, canEdit, onE
             )}
           </div>
         </div>
+
+        {!editing && (hasDiagram || hasGraph) && (
+          <div className="mt-4 w-full min-w-0 space-y-3">
+            {hasDiagram && task.diagram_config && (
+              <GeometryVisualizer config={task.diagram_config} />
+            )}
+            {hasGraph && (
+              <GeoGebraGraph equation={task.function_equation} />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Answer */}

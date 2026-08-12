@@ -1,7 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { usePlan } from '../lib/usePlan';
-import { Crown, Tag, Loader2, Mail, LogIn, Shield, HelpCircle } from 'lucide-react';
+import { Crown, Tag, Loader2, Mail, LogIn, Shield, HelpCircle, Pi } from 'lucide-react';
+
+function Logo() {
+  return (
+    <div className="flex items-center gap-2.5 tracking-tight">
+      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center flex-shrink-0">
+        <Pi size={20} className="text-white" strokeWidth={2.25} />
+      </div>
+      <span className="text-xl font-bold">
+        <span className="text-slate-800">Matematika</span>
+        <span className="text-violet-600">AI</span>
+      </span>
+    </div>
+  );
+}
 
 function getFirstName(fullName: string | null, email: string | null): string {
   if (fullName && fullName.trim()) {
@@ -19,6 +32,49 @@ function getFirstName(fullName: string | null, email: string | null): string {
     return localPart;
   }
   return 'Naudotojau';
+}
+
+function usageDayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function usageMonthKey(): string {
+  return new Date().toISOString().slice(0, 7);
+}
+
+function profileUsageLabel(profile: {
+  plan: string;
+  role?: string | null;
+  used_requests: number;
+  used_tasks: number;
+  requests_today?: number;
+  usage_day?: string | null;
+  requests_month?: number;
+  tasks_month?: number;
+  usage_month?: string | null;
+}): { primary: string; secondary: string } {
+  const today = usageDayKey();
+  const month = usageMonthKey();
+  const reqToday = profile.usage_day === today ? (profile.requests_today ?? 0) : 0;
+  const reqMonth =
+    profile.usage_month === month
+      ? (profile.requests_month ?? 0)
+      : 0;
+  const tasksMonth =
+    profile.usage_month === month
+      ? (profile.tasks_month ?? 0)
+      : 0;
+
+  if (profile.plan === "pro") {
+    return {
+      primary: `Užklausos: ${reqMonth}/100 (mėn.)`,
+      secondary: `Užduotys: ${tasksMonth}/300 (mėn.)`,
+    };
+  }
+  return {
+    primary: `Šiandien: ${reqToday}/3`,
+    secondary: `Mėnuo: ${reqMonth}/10`,
+  };
 }
 
 function LoginMenu({ onClose }: { onClose: () => void }) {
@@ -115,7 +171,6 @@ export const Header: React.FC<{
   adminOpen?: boolean;
 }> = ({ onOpenPricing, pricingOpen, onOpenGuide, guideOpen, onOpenAdmin, adminOpen }) => {
   const { user, profile, signOut, loading } = useAuth();
-  const { devGuestAsPro, hasProFeatures } = usePlan();
   const [loginOpen, setLoginOpen] = useState(false);
   const loginRef = useRef<HTMLDivElement>(null);
 
@@ -133,7 +188,7 @@ export const Header: React.FC<{
   if (loading) {
     return (
       <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
-        <span className="text-xl font-bold text-indigo-600">MatematikaAI</span>
+        <Logo />
         <div className="w-32 h-8 bg-gray-100 rounded animate-pulse" />
       </header>
     );
@@ -141,19 +196,29 @@ export const Header: React.FC<{
 
   const isLoggedIn = !!user;
   const firstName = getFirstName(profile?.full_name ?? null, profile?.email ?? user?.email ?? null);
-  const planLabel = devGuestAsPro
-    ? 'PRO'
-    : !user
-      ? 'GUEST'
-      : profile?.plan === 'pro'
-        ? 'PRO'
-        : 'FREE';
-  const isPro = hasProFeatures;
+  const planLabel = !user
+    ? '—'
+    : profile?.role === 'admin'
+      ? 'UNLIMITED'
+      : profile?.plan === 'unlimited'
+        ? 'UNLIMITED'
+        : profile?.plan === 'pro'
+          ? 'PRO'
+          : 'FREE';
+  const isUnlimitedBadge =
+    profile?.role === 'admin' || profile?.plan === 'unlimited';
+  const isProBadge = profile?.plan === 'pro' && profile?.role !== 'admin';
+  const badgeClass = isUnlimitedBadge
+    ? 'bg-violet-100 text-violet-700'
+    : isProBadge
+      ? 'bg-indigo-100 text-indigo-700'
+      : 'bg-gray-200 text-gray-700';
+  const showUsageStats = profile && !isUnlimitedBadge;
 
   return (
     <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4 shadow-sm sticky top-0 z-50">
       <div className="flex items-center gap-2 flex-shrink-0">
-        <span className="text-xl font-bold text-indigo-600">MatematikaAI</span>
+        <Logo />
         <button
           type="button"
           onClick={onOpenPricing}
@@ -218,30 +283,38 @@ export const Header: React.FC<{
         {isLoggedIn ? (
           <div className="flex items-center gap-3 sm:gap-4 text-sm min-w-0">
             {profile && (
-              <div className="hidden lg:flex items-center gap-3 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg text-gray-700">
-                <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${
-                  isPro ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700'
-                }`}>
-                  {isPro && <Crown size={11} />}
+              isUnlimitedBadge ? (
+                <span
+                  className={`hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${badgeClass}`}
+                >
+                  <Crown size={11} />
                   {planLabel}
                 </span>
-                <span>
-                  Užklausos: <strong>{profile.used_requests}</strong>/{isPro ? 100 : 3}
-                </span>
-                <span className="text-gray-300">|</span>
-                <span>
-                  Užduotys: <strong>{profile.used_tasks}</strong>/{isPro ? 300 : 3}
-                </span>
-              </div>
+              ) : (
+                <div className="hidden lg:flex items-center gap-3 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg text-gray-700">
+                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${badgeClass}`}>
+                    {isProBadge && <Crown size={11} />}
+                    {planLabel}
+                  </span>
+                  {showUsageStats && (() => {
+                    const u = profileUsageLabel(profile);
+                    return (
+                      <>
+                        <span>{u.primary}</span>
+                        <span className="text-gray-300">|</span>
+                        <span>{u.secondary}</span>
+                      </>
+                    );
+                  })()}
+                </div>
+              )
             )}
 
             <span className="text-gray-700 font-medium flex items-center gap-2 truncate">
               <span className="hidden sm:inline">Sveikas,</span>
               <span className="text-indigo-600 font-semibold truncate">{firstName}</span>
-              <span className={`lg:hidden flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold flex-shrink-0 ${
-                isPro ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700'
-              }`}>
-                {isPro && <Crown size={11} />}
+              <span className={`lg:hidden flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold flex-shrink-0 ${badgeClass}`}>
+                {(isProBadge || isUnlimitedBadge) && <Crown size={11} />}
                 {planLabel}
               </span>
             </span>
@@ -256,12 +329,6 @@ export const Header: React.FC<{
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <span className={`hidden sm:flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-lg ${
-              isPro ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500 bg-slate-100'
-            }`}>
-              {isPro && <Crown size={11} />}
-              {planLabel}
-            </span>
             <div className="relative" ref={loginRef}>
               <button
                 type="button"

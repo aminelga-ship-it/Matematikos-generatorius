@@ -1,38 +1,45 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { isDevGuestAsPro } from './devFlags';
 import { Crown, X, ArrowRight } from 'lucide-react';
 
-export type PlanTier = 'guest' | 'free' | 'pro';
+export type PlanTier = 'free' | 'pro' | 'unlimited';
+
+function isPaidPlan(plan: string | undefined): boolean {
+  return plan === 'pro' || plan === 'unlimited';
+}
 
 export function usePlan() {
   const { user, profile } = useAuth();
-  const tier: PlanTier = !user ? 'guest' : profile?.plan === 'pro' ? 'pro' : 'free';
-  const devGuestAsPro = !user && isDevGuestAsPro();
-  const hasProFeatures = tier === 'pro' || devGuestAsPro;
+  const isAdmin = profile?.role === "admin";
+  const rawPlan = profile?.plan ?? "free";
+  const plan = user ? (isAdmin ? "unlimited" : rawPlan) : "free";
+  const tier: PlanTier =
+    plan === "unlimited" ? "unlimited" : plan === "pro" ? "pro" : "free";
 
+  const hasProFeatures = isAdmin || isPaidPlan(plan);
   const isPro = tier === 'pro';
-  const isGuest = tier === 'guest';
+  const isUnlimited = tier === 'unlimited';
   const isFree = tier === 'free';
 
   const canUploadImage = hasProFeatures;
   const canEditTasks = hasProFeatures;
   const canExport = hasProFeatures;
   const canPrint = hasProFeatures;
-  const maxTasksPerGeneration = hasProFeatures ? 15 : isGuest ? 3 : 1;
+  const maxTasksPerGeneration = hasProFeatures ? 15 : 1;
 
   return {
     tier,
     isPro,
-    isGuest,
+    isUnlimited,
     isFree,
-    devGuestAsPro,
     hasProFeatures,
     canUploadImage,
     canEditTasks,
     canExport,
     canPrint,
     maxTasksPerGeneration,
+    isLoggedIn: !!user,
+    isAdmin,
   };
 }
 
@@ -62,10 +69,10 @@ export function UpgradeModal({ open, onClose, onUpgrade, featureName }: UpgradeM
             <Crown size={26} className="text-blue-600" />
           </div>
 
-          <h3 className="text-xl font-bold text-slate-800">Ši funkcija reikalauja PRO plano</h3>
+          <h3 className="text-xl font-bold text-slate-800">Ši funkcija reikalauja PRO arba Unlimited plano</h3>
           <p className="text-slate-500 mt-2 text-sm leading-relaxed">
             Jūsų dabartinis planas nepalaiko: <strong className="text-slate-700">{featureName}</strong>.
-            Atnaujinkite į PRO ir gauite visas funkcijas be apribojimų.
+            Atnaujinkite planą ir gaukite visas funkcijas.
           </p>
 
           <div className="mt-6 w-full space-y-2 text-left">
@@ -90,7 +97,7 @@ export function UpgradeModal({ open, onClose, onUpgrade, featureName }: UpgradeM
             onClick={onUpgrade}
             className="mt-6 w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2"
           >
-            Pereiti į PRO
+            Peržiūrėti planus
             <ArrowRight size={18} />
           </button>
           <button

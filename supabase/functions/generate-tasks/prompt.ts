@@ -1,23 +1,96 @@
-import {
-  buildGradeConstraints,
-  buildGradeCurriculumSection,
-  buildGrade8DifficultyDescription,
-  buildGradeProgramDifficultyDescription,
-  gradeDescriptions,
-} from "./gradeRules.ts";
 import { buildDiagramSection } from "./diagram.ts";
 
-const HARD_MULTI_TOPIC =
-  " Privaloma: sujunk ≥2 skirtingas programos temas ar teorijas; nestandartinė/originali sąlyga (ne tipinis vadovėlio pavyzdys); reikia pasirinkti sprendimo strategiją.";
+type DifficultyBand = "1-4" | "5-8" | "9-12";
+type DifficultyLevel = "lengvos" | "vidutinės" | "sunkios";
 
-const difficultyDescriptions: Record<string, string> = {
-  lengvos: "Lengvos: 1 aiškus žingsnis, tiesioginis taikymas.",
-  vidutinės: `Vidutinės: ≥2 nepriklausomi loginiai žingsniai. Draudžiama: vienas formulės įstatymas su visomis reikšmėmis (per lengva). Pirmiau rask trūkstamą dydį, tada naudok toliau arba sujunk 2 taisykles.`,
-  sunkios: `Sunkios (9–12 kl., VBE lygis): 4–6 žingsniai; keitimas kintamuoju (t=2^x, sin x=t); ODA/intervalai su $\\cup$/$\\cap$; kombinuotos sąlygos. Tipai: rodiklinės/log/trig. nelygybės, modulis. Be trivialių vieno žingsnio lygčių.${HARD_MULTI_TOPIC}`,
+function difficultyBand(grade: number): DifficultyBand {
+  if (grade <= 4) return "1-4";
+  if (grade <= 8) return "5-8";
+  return "9-12";
+}
+
+const DIFFICULTY_BY_BAND: Record<DifficultyBand, Record<DifficultyLevel, string>> = {
+  "1-4": {
+    lengvos:
+      "Lengvas → pritaikyti išmoktą taisyklę (skaičių palyginimas, paprasti skaičiavimai, tiesioginės vieno veiksmo užduotys).",
+    vidutinės:
+      "Vidutinis → reikia pasirinkti, kokią taisyklę ir veiksmus taikyti. Didesni, sudėtingesni skaičiai, kelių veiksmų reiškiniai, paprasti tekstiniai uždaviniai, trupmeniniai skaičiai, perimetras, matavimo vnt. pritaikymas, nežinomo skaičiaus radimas ir panašiai.",
+    sunkios:
+      "Sunkus → reikia samprotauti, susidaryti strategiją ir atrasti sprendimą bei išspręsti. Sudėtingi tekstiniai uždaviniai, ilgesni reiškiniai, loginis samprotavimas, kelių temų derinimas, sudėtingesnės trupmenos/matai, dėsningumų ir ryšių pastebėjimas.",
+  },
+  "5-8": {
+    lengvos:
+      "Lengvas → pritaikyti taisyklę ar formulę. Pagrindiniai veiksmai su sveikaisiais, trupmeniniais ir dešimtainiais skaičiais; ne tik apskaičiavimo uždaviniuose dominuoja sveikieji skaičiai; paprastos proporcijos ir procentai, trumpos lygtys. 1 teorija – 1 žingsnis.",
+    vidutinės:
+      "Vidutinis → pasirinkti tinkamą metodą ir atlikti kelis žingsnius. Sudėtingesni reiškiniai, lygtys, nelygybės; ne apskaičiavimo uždaviniuose apie 40% dešimtainės trupmenos, 50% sveikieji skaičiai ir 10% paprastosios trupmenos; standartiniai tekstiniai uždaviniai.",
+    sunkios:
+      "Sunkus → analizuoti, susikurti sprendimo strategiją, susieti kelias temas. Nestandartiniai ir kelių etapų uždaviniai, sudėtingi, ilgi reiškiniai, lygtys ar nelygybės, algebros ir geometrijos derinimas, kitų kelių temų derinimas (pvz. geometrija ir procentai), gyvenimiški uždaviniai, loginis samprotavimas; ne skaičiavimo uždaviniuose 50% paprastosios trupmenos, 30% dešimtainės, 20% sveikieji sk.",
+  },
+  "9-12": {
+    lengvos:
+      "Lengvas → pritaikyti žinomą formulę, taisyklę. 1 potemės žinios – 1 žingsnis. Paprasti uždaviniai su racionaliaisiais sk.",
+    vidutinės:
+      "Vidutinis → reikia pasirinkti tinkamą metodą ir susieti kelis veiksmus ar sąvokas. Sudėtingesni, ilgesni uždaviniai, funkcijų savybės. Standartiniai tekstiniai uždaviniai. Reikalingos viso temos žinios – keli žingsniai.",
+    sunkios:
+      "Sunkus → reikia analizuoti, sukurti sprendimo strategiją, gebėti spręsti sudėtingas problemas. Nestandartiniai ir kompleksiniai uždaviniai; kelių temų integravimas; parametriniai uždaviniai; įrodymų ir pagrindimo reikalaujančios užduotys; optimizavimo, loginio samprotavimo, gyvenimiško turinio uždaviniai.",
+  },
 };
 
-export function selectModel(grade: number): string {
-  return grade <= 4 ? "gpt-4o-mini" : "gpt-4o";
+function bandDifficultyText(grade: number, level: DifficultyLevel): string {
+  return DIFFICULTY_BY_BAND[difficultyBand(grade)][level];
+}
+
+type ModelDifficultyTier = "lengvos" | "vidutinės" | "sunkios" | "mixed";
+
+function modelDifficultyTier(difficulty: string): ModelDifficultyTier {
+  if (difficulty === "lengvos") return "lengvos";
+  if (difficulty === "vidutinės") return "vidutinės";
+  if (difficulty === "sunkios") return "sunkios";
+  if (isMixedDifficulty(difficulty)) return "mixed";
+  return "vidutinės";
+}
+
+/** Modelis pagal klasę, sunkumą ir ar reikia brėžinio / GeoGebra grafiko. */
+export function selectModel(
+  grade: number,
+  difficulty: string,
+  withDiagram: boolean,
+  withGraph: boolean,
+): string {
+  const visual = withDiagram || withGraph;
+
+  if (grade <= 2) {
+    return visual ? "gpt-4.1" : "gpt-4o-mini";
+  }
+
+  if (grade <= 4) {
+    return "gpt-4.1";
+  }
+
+  if (visual) {
+    return "gpt-5.4";
+  }
+
+  const tier = modelDifficultyTier(difficulty);
+
+  if (grade <= 6) {
+    if (tier === "sunkios" || tier === "mixed") return "gpt-4.1";
+    return "gpt-4o";
+  }
+
+  if (grade <= 10) {
+    if (tier === "lengvos") return "gpt-4o";
+    return "gpt-5.4";
+  }
+
+  if (tier === "lengvos") return "gpt-4.1";
+  if (tier === "vidutinės") return "gpt-5.4";
+  return "o3";
+}
+
+/** GPT-5 / o-serija: kita tokenų ir sampling parametrų schema. */
+export function isReasoningChatModel(model: string): boolean {
+  return /^gpt-5/i.test(model) || /^o\d/i.test(model);
 }
 
 /** 8 kl.: lengvoms šiek tiek žemesnė temperatūra; sunkioms — 0,7. */
@@ -29,47 +102,16 @@ export function selectTemperature(grade: number, difficulty: string): number {
 export function buildDifficultyDescription(
   difficulty: string,
   grade: number,
-  taskCount = 1,
-  useProgramRules = true,
+  _taskCount = 1,
+  _useProgramRules = true,
 ): string {
-  if (useProgramRules) {
-    if (difficulty === "savarankiskas" || difficulty === "ivairus") {
-      const mixed = buildGradeProgramDifficultyDescription(grade, "vidutinės", taskCount);
-      if (mixed) return mixed;
-      return buildDifficultyDescription("vidutinės", grade, taskCount, false);
-    }
-
-    const fromProgram = buildGradeProgramDifficultyDescription(grade, difficulty, taskCount);
-    if (fromProgram) return fromProgram;
-  } else if (difficulty === "savarankiskas" || difficulty === "ivairus") {
-    return buildDifficultyDescription("vidutinės", grade, taskCount, false);
+  if (difficulty === "savarankiskas" || difficulty === "ivairus") {
+    return bandDifficultyText(grade, "vidutinės");
   }
-
-  if (difficulty === "sunkios") {
-    if (grade <= 4) {
-      return `Sunkios (${grade} kl.): 3–4 aritmetiniai veiksmai arba nestandartinis tekstinis; be algebros.${HARD_MULTI_TOPIC}`;
-    }
-    if (grade <= 6) {
-      return `Sunkios (${grade} kl.): 3–4 loginiai žingsniai; kombinuoti dydžius (geometrija — ne duoti visų kraštinių; procentai/trupmenos — ne vienas veiksmas). Draudžiama: vienas skaičiavimas, algebrinės lygtys su x.${HARD_MULTI_TOPIC}`;
-    }
-    if (grade <= 8) {
-      return `Sunkios (${grade} kl.): ≥3–4 žingsniai, kelios taisyklės (lygčių sistemos, Pitagoras+algebra).${HARD_MULTI_TOPIC}`;
-    }
-    return difficultyDescriptions["sunkios"];
+  if (difficulty === "lengvos" || difficulty === "vidutinės" || difficulty === "sunkios") {
+    return bandDifficultyText(grade, difficulty);
   }
-
-  if (difficulty === "vidutinės") {
-    const base = difficultyDescriptions["vidutinės"];
-    if (grade >= 5 && grade <= 6) {
-      return base + " 5–6 kl.: didesni skaičiai, skliaustai, trupmenos su skirtingais vardikliais, paprasti tekstiniai.";
-    }
-    if (grade === 7) {
-      return base + " 7 kl. geometrija: ≥2 faktai (kampų suma/lygiagretumas/plotas→perimetras); kampams — algebrinės išraiškos, ne tik skaičiai.";
-    }
-    return base;
-  }
-
-  return difficultyDescriptions["lengvos"];
+  return bandDifficultyText(grade, "vidutinės");
 }
 
 export const SAVARANKISKAS_MIN_TASKS = 5;
@@ -115,40 +157,31 @@ function buildMixedDifficultyBlock(
   grade: number,
   difficulty: string,
   counts: { lengvos: number; vidutinės: number; sunkios: number },
-  useProgramRules = true,
 ): string {
-  const title = `Įvairaus sudėtingumo`;
-  if (useProgramRules && grade === 8) {
-    return `${title} (8 kl.): ${counts.lengvos} lengvų, ${counts.vidutinės} vidutinių, ${counts.sunkios} sunkių — ta pati tematika. Kiekvienam kiekiui taikyk atskirą bloką (lengvoms — be originalumo; sunkioms — privalomas originalumas).
-LENGVOS×${counts.lengvos}: ${buildGrade8DifficultyDescription("lengvos")}
-VIDUTINĖS×${counts.vidutinės}: ${buildGrade8DifficultyDescription("vidutinės")}
-SUNKIOS×${counts.sunkios}: ${buildGrade8DifficultyDescription("sunkios", counts.sunkios)}`;
-  }
-  return `${title}: ${counts.lengvos} lengvų, ${counts.vidutinės} vidutinių, ${counts.sunkios} sunkių — ta pati tematika. Sunkios — žr. sunkių schemą. Sunkumas: ${buildDifficultyDescription("lengvos", grade, counts.lengvos, useProgramRules)} | ${buildDifficultyDescription("vidutinės", grade, counts.vidutinės, useProgramRules)} | ${buildDifficultyDescription("sunkios", grade, counts.sunkios, useProgramRules)}`;
-}
-
-function buildSavarankiskasDifficultyBlock(
-  grade: number,
-  counts: { lengvos: number; vidutinės: number; sunkios: number },
-): string {
-  return buildMixedDifficultyBlock(grade, "savarankiskas", counts);
+  const title = difficulty === "ivairus" ? "Įvairaus sudėtingumo" : "Mišraus sudėtingumo";
+  return `${title}: ${counts.lengvos} lengvų, ${counts.vidutinės} vidutinių, ${counts.sunkios} sunkių — ta pati tematika.
+Lengvos×${counts.lengvos}: ${bandDifficultyText(grade, "lengvos")}
+Vidutinės×${counts.vidutinės}: ${bandDifficultyText(grade, "vidutinės")}
+Sunkios×${counts.sunkios}: ${bandDifficultyText(grade, "sunkios")}`;
 }
 
 function buildFormattingSection(grade: number): string {
   if (grade <= 4) return "Formatavimas: $...$ reiškiniams; JSON \\\\cdot ir kt.";
-  if (grade <= 6) return "Formatavimas: trupmenos $\\frac{a}{b}$; procentai $n\\%$.";
+  if (grade <= 6) {
+    return "Formatavimas: trupmenos $\\frac{a}{b}$; procentai $n\\%$; matavimo vienetai su laipsniu — $60\\ \\text{cm}^3$, $12\\ \\text{m}^2$ (ne cm^3 be LaTeX).";
+  }
   if (grade <= 10) return "Formatavimas: $\\frac{}{}$, $\\sqrt{}$, $\\leq$, kintamieji $x$.";
   return "Formatavimas: + trig./log.; $\\cup$, $\\cap$ intervalams.";
 }
 
 const LT_GEOMETRY_WORDING =
-  "Geometrijos LT: statusis trikampis (ne „stačiasis trikampis“); įstrižainė (ne „diagonalė“); vidurio linija geometrijoje (ne „mediana“ — mediana tik statistikoje); statusio trikampio įžambinė ir statiniai.";
+  "Geometrijos LT: stačiojo trikampio (ne „statusio“, „statusis“, „stačiasis trikampis“); įstrižainė (ne „diagonalė“); vidurio linija geometrijoje (ne „mediana“ — mediana tik statistikoje); stačiojo trikampio įžambinė ir statiniai.";
 
 function buildTerminologySection(grade: number): string {
   let base: string;
-  if (grade >= 11) base = "Terminai: pilna VBE terminologija (derivata, integralas…).";
-  else if (grade === 10) base = "Terminai: trig., log., parabolė, diskriminantas; ne derivata/integralas.";
-  else if (grade === 9) base = "Terminai: kvadratinės lygtys, parabolė, trig. pradmenys; ne log./derivata.";
+  if (grade >= 11) base = "Terminai: pilna VBE terminologija (išvestinė, integralas…).";
+  else if (grade === 10) base = "Terminai: trig., log., parabolė, diskriminantas; ne išvestinė/integralas.";
+  else if (grade === 9) base = "Terminai: kvadratinės lygtys, parabolė, trig. pradmenys; ne log./išvestinė.";
   else if (grade === 8) base = "Terminai: šaknis, Pitagoras, lygčių sistema, vektorius, grupavimo būdas; ne modulis, ne kvadratinės lygtys, ne trupmeniniai reiškiniai (9 kl.), ne trig./log.";
   else if (grade >= 7) base = "Terminai: lygtis, reiškinys, koordinatės, $|x|$; ne kvadratinės/trig./log.";
   else if (grade >= 5) base = "Terminai: trupmena, procentas, proporcija; ne lygtys/koordinatės.";
@@ -200,8 +233,6 @@ Tipas: gryna matematika (lygtis/reiškinys/skaičiavimas) be teksto; tekstinį t
 
 ${STATIC_LATEX_AND_JSON_RULES}
 
-Tikslumas: patikrink teiginius; geometrijoje Pitagoras ir vidurio linija tik jei leidžia sąlyga.
-
 answer: glaustai — tik reikšmės, dalys per ; be etikečių ir sakinių.`;
   return staticSystemPromptCore;
 }
@@ -209,9 +240,16 @@ answer: glaustai — tik reikšmės, dalys per ; be etikečių ir sakinių.`;
 function buildElementaryArithmeticSection(grade: number): string {
   if (grade > 4) return "";
   return `
-1–${grade} KL. SKAIČIAVIMAI (ne veiksmų eilutė — PRIVALOMA):
+1–${grade} KL. TEKSTINIAI UŽDAVINIAI (svarbiau už stulpelį/kampą):
+- Jei užduotis žodinė (sąlyga sakiniais, gyvenimiška situacija, „Kiek…“, „Raskite…“ su kontekstu) — question TIK tekstas ir duomenys; DRAUDŽIAMA question lauke rodyti skaičiavimo veiksmą ($$...$$, stulpelį, kampą, veiksmų eilutę, „2+3“ kaip paruoštą veiksmą). Mokinys pats turi sugalvoti veiksmą.
+- Formulę galima pateikti žodžiais arba $P=4a$, bet ne įrašyti jau paruošto skaičiavimo.
+
+1–${grade} KL. SKAIČIAVIMAI (tik gryni skaičiavimai, ne žodiniai):
+- Jei užduotis prasideda „Apskaičiuokite“, „Sudėkite stulpeliu“, „Atimkite stulpeliu“ ar panašiai — PRIVALOMAS stulpelis arba kampas $$...$$ bloke question lauke (ypač kai solution tuščias).
+- **Sudėtis ir atimtis** — stulpeliu ($$\\begin{array}{r}...\\end{array}$$ su + arba −).
+- **Dalyba** — DRAUDŽIAMA rašyti stulpeliu kaip sudėtį/atimtį (skaičius viršuje, apačioje „: daliklis“ po brūkšneliu). Dalybai naudok **eilutę** (pvz. „Apskaičiuokite: $48 : 6=$“) **arba dalybos kampą** $$...$$ (dalinys, daliklis, dalmuo, liekana) — ne array stulpelio formatą.
 - „Veiksmų eilutė“ — tik kai reikia skaičiuoti pagal veiksmų tvarką (skliaustai, keli veiksmai vienoje išraiškoje, pvz. $2+3\\cdot4$). Tada skaičiavimas gali būti eilutėje; answer vis tiek tik skaičius (žr. žemiau).
-- Visais kitais atvejais (sudėtis, atimtis, daugyba stulpeliu, dalyba kampu): rodomas skaičiavimas $$...$$ bloke (question arba solution) — stulpeliu (vienetai/dešimtys) arba dalyba kampu (daliklis, dalinys, dalmenys, liekana). DRAUDŽIAMA vienoje eilutėje „23+45=68“, „156:12=13“ be stulpelio/kampo.
+- Visais kitais atvejais (sudėtis, atimtis stulpeliu; dalyba kampu): rodomas skaičiavimas $$...$$ bloke (question arba solution) — stulpeliu tik +/−; dalybai kampu (daliklis, dalinys, dalmenys, liekana) arba eilutėje $a : b =$. DRAUDŽIAMA vienoje eilutėje „23+45=68“, „156:12=13“ be stulpelio (sudėčiai/atimčiai) arba be kampo/eilutės (dalybai).
 - Stulpelio pavyzdys: $$\\begin{array}{r} 23 \\\\ + \\; 45 \\\\ \\hline 68 \\end{array}$$
 - Kampo pavyzdys: naudok $$...$$ su dalybos kampu (ne inline, ne trupmena kaip galutinis atsakymas).
 
@@ -241,10 +279,9 @@ function buildVariableSystemPromptSuffix(
   withDiagram: boolean,
   withGraph: boolean,
   withSolution: boolean,
-  profile: SystemPromptProfile,
+  _profile: SystemPromptProfile,
   topicSubtopicGuided = false,
 ): string {
-  const useProgramRules = profile === "topic" && !topicSubtopicGuided;
   const isMixed = difficulty === "savarankiskas" || difficulty === "ivairus";
   const mixCounts = isMixed ? splitMixedTaskCounts(difficulty, taskCount) : null;
   const hardOnlySolutions = withSolution && difficulty === "ivairus" && mixCounts;
@@ -273,63 +310,29 @@ function buildVariableSystemPromptSuffix(
     : `Brėžinys: ne (diagram_config neįtrauk).`;
 
   const solutionBlock = hardOnlySolutions
-    ? grade === 8
-      ? `Sprendimai: tik ${mixCounts!.sunkios} SUNKIOMS užduotims — PRIVALOMA; likusioms ${mixCounts!.lengvos + mixCounts!.vidutinės} — "solution":"". Savikra sunkioms: T|A0 + antra raidė.`
-      : `Sprendimai: tik ${mixCounts!.sunkios} sunkioms — PRIVALOMA; lengvoms ir vidutinėms "solution":"".`
+    ? `Sprendimai: tik ${mixCounts!.sunkios} sunkioms — PRIVALOMA; likusioms "solution":"".`
     : withSolution
-    ? grade === 8 && difficulty === "sunkios"
-      ? `Sprendimai: PRIVALOMA. Savikra: ar užduotis atitinka T|A0 + antrą raidę; jei ne — pakeisk question prieš grąžinant JSON.`
-      : grade <= 4
-        ? `Sprendimai: PRIVALOMA — skaičiavimas stulpeliu arba kampu $$...$$; answer tik skaičius (dalybai su liekana: „N liek. L“).`
-        : `Sprendimai: PRIVALOMA, glaustai 3–4 žingsniai. Savikra: patikrink answer.`
+    ? grade <= 4
+      ? `Sprendimai: PRIVALOMA — skaičiavimas stulpeliu arba kampu $$...$$; answer tik skaičius (dalybai su liekana: „N liek. L“).`
+      : `Sprendimai: PRIVALOMA, glaustai. Patikrink answer.`
     : grade <= 4
-      ? `Sprendimai: "solution"="" (arba tuščias). Skaičiavimo stulpelis/kampas — question arba solution, ne answer. answer — tik skaičius (+ liek. jei reikia).`
+      ? `Sprendimai: "solution"="" visur. Gryniems skaičiavimams stulpelis/kampas PRIVALOMAS question $$...$$ bloke (ne tik solution). Tekstiniame uždavinyje question be skaičiavimo veiksmų. answer — tik skaičius (+ liek. jei reikia).`
       : `Sprendimai: "solution"="" visur. Tik teisingas glaustas answer.`;
-
-  const sunkiosTextOverride =
-    topicSubtopicGuided
-      ? ""
-      : useProgramRules &&
-    grade === 8 &&
-    (difficulty === "sunkios" || difficulty === "savarankiskas" || difficulty === "ivairus")
-      ? `\n8 KL. SUNKIOS: nepaisant bendros taisyklės „gryna matematika be teksto“ — taikoma sunkių schema (T tekstiniai + A0 algebra).`
-      : "";
 
   const difficultyBlock = topicSubtopicGuided
     ? isMixed
       ? `Sunkumas: taikyk user žinutėje pateiktų potemių skyrius Lengva / Vidutinė / Sunki (${taskCount} užduotims).`
       : `Sunkumas: taikyk user žinutėje nurodytą potemės lygį (Lengva / Vidutinė / Sunki).`
     : isMixed
-    ? buildMixedDifficultyBlock(grade, difficulty, mixCounts!, useProgramRules)
-    : `Sunkumo lygis (taikyti VISOMS ${taskCount} užduotims): ${buildDifficultyDescription(difficulty, grade, taskCount, useProgramRules)}`;
+    ? buildMixedDifficultyBlock(grade, difficulty, mixCounts!)
+    : `Sunkumo lygis (taikyti VISOMS ${taskCount} užduotims): ${buildDifficultyDescription(difficulty, grade, taskCount)}`;
 
-  const grade8Calibration =
-    topicSubtopicGuided
-      ? ""
-      : useProgramRules && grade === 8 && difficulty === "sunkios"
-      ? `\n8 KL. kalibracija (sunkios): tik jei tiktų brandžesniam 14 m. moksleivio savaitės kontroliniui — ne vadovėlio 1 pavyzdys. Pitagoras natūraliais skaičiais be F/I/H — atmesti.`
-      : useProgramRules && grade === 8 && difficulty !== "sunkios"
-        ? `\n8 KL.: lengvoms/vidutinėms — gryna matematika be teksto, jei vartotojas neprašė žodinės.`
-        : "";
-
-  const curriculumSection =
-    profile === "topic" && topicSubtopicGuided
-      ? "Programa: tik user žinutės potemės aprašas (be kitų klasių temų sąrašo)."
-      : useProgramRules
-        ? buildGradeCurriculumSection(grade)
-        : "";
-  const gradeConstraints = useProgramRules ? buildGradeConstraints(grade) : "";
-
-  const classLine = topicSubtopicGuided
-    ? `Klasė: ${grade}`
-    : `Klasė / amžius: ${gradeDescriptions[grade] ?? grade}`;
+  const classLine = `Klasė: ${grade}`;
 
   return `
 === Užklausa (${taskCount} užd.) ===
 ${classLine}
-${curriculumSection}
-${difficultyBlock}${sunkiosTextOverride}${grade8Calibration}
-${gradeConstraints}
+${difficultyBlock}
 ${diagramRule}; ${graphEquationRule}
 ${buildTerminologySection(grade)}; ${buildFormattingSection(grade)}
 ${solutionBlock}

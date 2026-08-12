@@ -68,6 +68,22 @@ function normalizeDoubleBackslashes(text: string): string {
 }
 
 /** Tekstas ne $...$ — papildomas matematikos apvalkalas (seed / rankinis bankas). */
+const UNIT_SUPERSCRIPT_RE =
+  /\b(cm|mm|dm|m|km|g|kg|mg|ml|l|s|min|h)\^(\d+)\b/gi;
+
+function normalizeUnitSuperscripts(text: string): string {
+  return mapOutsideMathDelimiters(text, (plain) =>
+    plain
+      .replace(
+        /(\d+(?:[.,]\d+)?)\s*(cm|mm|dm|m|km|g|kg|mg|ml|l|s|min|h)\^(\d+)\b/gi,
+        (_, n: string, unit: string, exp: string) =>
+          `$${n}\\ \\text{${unit}}^{${exp}}$`,
+      )
+      .replace(UNIT_SUPERSCRIPT_RE, (_, unit: string, exp: string) => `$\\text{${unit}}^{${exp}}$`)
+      .replace(/[ \t]{2,}/g, " "),
+  );
+}
+
 function enrichPlainTextMath(plain: string): string {
   let s = plain;
   s = s.replace(/(\d+(?:\{,\}\d+)?)\s*\^\s*(?:\\\\)+circ\b/g, (_, n: string) => `$${n}^\\circ$`);
@@ -200,7 +216,9 @@ export const MathText: React.FC<MathTextProps> = ({ text, className }) => {
     const preprocessed = normalizeLatexDelimiters(
       repairBrokenEscapes(
         normalizeDoubleBackslashes(
-          mapOutsideMathDelimiters(wrapPercentLiterals(fixSlashFractions(text)), enrichPlainTextMath),
+          normalizeUnitSuperscripts(
+            mapOutsideMathDelimiters(wrapPercentLiterals(fixSlashFractions(text)), enrichPlainTextMath),
+          ),
         ),
       ),
     );

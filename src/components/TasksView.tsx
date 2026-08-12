@@ -1,6 +1,6 @@
 
 import {
-  Eye, EyeOff, BookOpen, BookX, Printer, RotateCcw, GraduationCap,
+  Eye, EyeOff, BookOpen, BookX, Printer, ArrowLeft, GraduationCap,
   FileType2, Lock,
 } from "lucide-react";
 import { TaskCard } from "./TaskCard";
@@ -129,8 +129,8 @@ export function TasksView({
             onClick={onReset}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 transition-all duration-150"
           >
-            <RotateCcw size={13} />
-            Naujos
+            <ArrowLeft size={13} />
+            Grįžti
           </button>
         </div>
       </div>

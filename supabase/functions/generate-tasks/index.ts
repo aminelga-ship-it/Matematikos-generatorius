@@ -3,8 +3,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { insertTasksAsBankDrafts, selectTasksFromBank, type BankDifficulty } from "./bank.ts";
 import type { DiagramConfig } from "./diagram.ts";
 import { generateTasksViaOpenAI } from "./openaiTasks.ts";
+import { PLAN_LIMITS } from "./planLimits.ts";
 import { isImageOnlyRequest } from "./prompt.ts";
 import { IVAIRUS_MIN_TASKS, isMixedDifficulty, splitIvairusTaskCounts, splitMixedTaskCounts } from "./prompt.ts";
+import { assertLoggedInWithinLimits, incrementLoggedInUsage, type ProfileUsage } from "./profileUsage.ts";
 import { buildSavarankiskasTopicPrompt } from "./savarankiskas.ts";
 import { fixTaskLatex, type Task } from "./taskLatex.ts";
 
@@ -24,8 +26,6 @@ interface TaskRequest {
   withGraph?: boolean;
   /** Default false — taupo tokenus, kai sprendimų nereikia */
   withSolution?: boolean;
-  /** Vystymui: kartu su DEV_GUEST_AS_PRO secret svečiui suteikia PRO limitus */
-  devGuestPro?: boolean;
   /** Generavimo režimas: pagal temą (bankas+AI) ar pagal tekstą */
   generationMode?: "topic" | "text";
   /** Pagal temą — potemių ID sąrašas */
@@ -47,22 +47,6 @@ function shuffleTasks<T>(arr: T[]): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
-}
-
-async function incrementProfileUsage(
-  supabaseAdmin: ReturnType<typeof createClient>,
-  userId: string,
-  usedRequests: number,
-  usedTasks: number,
-  taskCount: number,
-): Promise<void> {
-  await supabaseAdmin
-    .from("profiles")
-    .update({
-      used_requests: usedRequests + 1,
-      used_tasks: usedTasks + taskCount,
-    })
-    .eq("id", userId);
 }
 
 
@@ -106,45 +90,42 @@ Deno.serve(async (req: Request) => {
       withDiagram,
       withGraph,
       withSolution,
-      devGuestPro,
       generationMode,
       subtopicIds,
       topicIds,
     }: TaskRequest = await req.json();
 
-    const devGuestAsPro =
-      Deno.env.get("DEV_GUEST_AS_PRO") === "true" &&
-      !user &&
-      devGuestPro === true;
+    if (!user || !userProfile) {
+      return new Response(
+        JSON.stringify({ error: "Norėdami generuoti užduotis, prisijunkite." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
-    const hasProAccess = userProfile?.plan === "pro" || devGuestAsPro;
+    const userPlan = userProfile.plan ?? "free";
+    const isAdmin = userProfile.role === "admin";
+    const hasProAccess = isAdmin || userPlan === "pro" || userPlan === "unlimited";
+    const skipUsageCount = isAdmin || userPlan === "unlimited";
 
-    // Patikriname limitus
-if (userProfile) {
-  const maxRequests = userProfile.plan === 'pro' ? 100 : 3;
-  const maxTasks = userProfile.plan === 'pro' ? 300 : 3;
+    let loggedInPeriod: {
+      requestsToday: number;
+      requestsMonth: number;
+      tasksMonth: number;
+      usageDay: string;
+      usageMonth: string;
+    } | null = null;
 
-  if (userProfile.used_requests >= maxRequests) {
-    return new Response(
-      JSON.stringify({ error: 'Viršijote leistiną užklausų limitą. Atnaujinkite planą į PRO!' }),
-      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-
-  if (userProfile.used_tasks + taskCount > maxTasks) {
-    return new Response(
-      JSON.stringify({ error: `Viršytumėte leistiną užduočių limitą (${userProfile.used_tasks}/${maxTasks}).` }),
-      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-} else {
-  if (!devGuestAsPro && taskCount > 3) {
-    return new Response(
-      JSON.stringify({ error: 'Svečio režimu galite generuoti ne daugiau nei 3 užduotis vienu metu.' }),
-      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-}
+    const check = assertLoggedInWithinLimits(userProfile as ProfileUsage, taskCount);
+    if (!check.ok) {
+      return new Response(
+        JSON.stringify({
+          error: check.error,
+          ...(check.code ? { code: check.code } : {}),
+        }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    loggedInPeriod = check.period;
 
     if (!grade || grade < 1 || grade > 12) {
       return new Response(
@@ -184,17 +165,15 @@ if (userProfile) {
       effectiveDifficulty === "ivairus";
     const includeSolutions = includeSolutionsAll || includeSolutionsHardInMix;
 
-    const perGenerationMax =
-      hasProAccess || devGuestAsPro ? 15 : userProfile ? 1 : 3;
+    const perGenerationMax = hasProAccess
+      ? PLAN_LIMITS.pro.maxTasksPerGeneration
+      : PLAN_LIMITS.free.maxTasksPerGeneration;
     if (taskCount > perGenerationMax) {
       return new Response(
         JSON.stringify({
-          error:
-            perGenerationMax === 15
-              ? "Vienu metu galite generuoti ne daugiau nei 15 užduočių."
-              : perGenerationMax === 1
-                ? "Nemokamame plane vienu metu galima generuoti 1 užduotį. Atnaujinkite į PRO."
-                : "Svečio režimu galite generuoti ne daugiau nei 3 užduotis vienu metu.",
+          error: hasProAccess
+            ? "Vienu metu galite generuoti ne daugiau nei 15 užduočių."
+            : "Nemokamame plane vienu metu galima generuoti 1 užduotį. Atnaujinkite į PRO arba Unlimited.",
         }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -242,6 +221,7 @@ if (userProfile) {
         { subtopicIds: subtopicIdList, topicIds: topicIdList },
         taskCount,
         topicBankMode,
+        user?.id ?? null,
       );
 
       if (bankError) {
@@ -344,13 +324,12 @@ if (userProfile) {
 
       let tasks = shuffleTasks([...bankMapped, ...aiTasks]).map((t) => fixTaskLatex(t, grade));
 
-      if (userProfile && user) {
-        await incrementProfileUsage(
+      if (loggedInPeriod && !skipUsageCount) {
+        await incrementLoggedInUsage(
           supabaseAdmin,
-          user.id,
-          userProfile.used_requests,
-          userProfile.used_tasks,
+          userProfile as ProfileUsage,
           taskCount,
+          loggedInPeriod,
         );
       }
 
@@ -435,17 +414,19 @@ if (userProfile) {
       bank_item_id: t.bank_item_id || undefined,
     }));
 
-    if (userProfile && user) {
-      await incrementProfileUsage(
+    if (loggedInPeriod && !skipUsageCount) {
+      await incrementLoggedInUsage(
         supabaseAdmin,
-        user.id,
-        userProfile.used_requests,
-        userProfile.used_tasks,
+        userProfile as ProfileUsage,
         taskCount,
+        loggedInPeriod,
       );
     }
     return new Response(
-      JSON.stringify({ tasks, fromBank: false }),
+      JSON.stringify({
+        tasks,
+        fromBank: false,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

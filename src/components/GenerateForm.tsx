@@ -474,7 +474,7 @@ export function GenerateForm({
             placeholder={
               imagePreview
                 ? "Papildomai galite aprašyti, ko norite (nebūtina)..."
-                : `Aprašykite norimą užduotį arba įklijuokite pavyzdinę užduotį...\n\nPvz.: Jonukas turi 24 obuolius. Jis padovanojo 1/3 draugams. Kiek obuolių liko?`
+                : "Aprašykite norimą užduotį arba įklijuokite pavyzdinę užduotį..."
             }
             rows={5}
             className="w-full px-4 py-3 text-sm text-slate-700 placeholder-slate-300 resize-none focus:outline-none rounded-xl bg-transparent"

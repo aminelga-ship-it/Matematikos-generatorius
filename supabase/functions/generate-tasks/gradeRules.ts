@@ -24,7 +24,7 @@ export const gradeDescriptions: Record<number, string> = {
   8: "8 klasė (13-14 metai): šaknys, reiškinių veiksmai, tiesinės lygčių sistemos, vektoriai, Pitagoras, stereometrija, finansai",
   9: "9 klasė (14-15 metai): kvadratinės lygtys, trigonometrija pradžia, statistika",
   10: "10 klasė (15-16 metai): proporcingieji dydžiai, racionaliosios lygtys ir nelygybės, panašumas, trigonometrija, kombinatorika ir tikimybės",
-  11: "11 klasė (16-17 metai): derivatos, integralai pradžia, tikimybių teorija",
+  11: "11 klasė (16-17 metai): išvestinės, integralai pradžia, tikimybių teorija",
   12: "12 klasė (17-18 metai): integralai, begalinės eilutės, sudėtingesnė geometrija, brandos egzaminų lygis",
 };
 
@@ -864,7 +864,7 @@ export function buildGradeConstraints(grade: number): string {
     const extra = grade === 3
       ? " DRAUDŽIAMA dvi trupmenos viename veiksme; trupmena tik kaip dalis ar $n\\times\\frac{a}{b}$; dauguma užduočių be trupmenų."
       : "";
-    return `${grade} KL.: ne veiksmų eilutei — skaičiavimas stulpeliu arba kampu; answer tik skaičius (dalybai su liekana: „dalmuo liek. liekana“, pvz. „13 liek. 3“), be kampo/trupmenos answer lauke.${extra}`;
+    return `${grade} KL.: sudėtis/atimtis — stulpeliu; dalyba — eilutėje ($a:b=$) arba kampu, ne stulpeliu kaip sudėtis; answer tik skaičius (dalybai su liekana: „dalmuo liek. liekana“, pvz. „8 liek. 0“), be kampo/trupmenos answer lauke.${extra}`;
   }
 
   if (grade === 7) return `7 KL. laipsniai: ne tik $2^5$ — naudok savybes ($a^m\\cdot a^n$, $(a^m)^n$, $a^0$ ir pan.).`;

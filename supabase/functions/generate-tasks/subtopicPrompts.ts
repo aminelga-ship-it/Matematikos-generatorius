@@ -23,6 +23,14 @@ Vidutinė: raidinis iracionalus arba po moduliu reiškinys naudojant modulį, ka
 
 Sunki: raidinio iracionalaus reiškinio prastinimas, kai po šaknimi yra kvadratinis trinaris, skaidomas per dvinario kvadrato formulę; raidinis iracionalus reiškinys naudojant modulį, kai $x$ intervalas neduotas; sudėtingi raidiniai moduliniai reiškiniai.`,
   },
+  "11:laipsniai-ir-saknys": {
+    title: "Laipsniai ir šaknys",
+    body: `Lengva: laipsnių su racionaliuoju rodikliu skaičiavimas taikant vieną savybę (vienodų pagrindų daugyba/dalyba, laipsnio kėlimas laipsniu, pvz. $27^{2/3}$); šaknies keitimas laipsniu su racionaliuoju rodikliu ir atvirkščiai ($a^{m/n}=\\sqrt[n]{a^m}$); paprastos šaknų savybės su skaičiais ($\\sqrt[n]{ab}$, $\\sqrt[n]{a/b}$).
+
+Vidutinė: reiškinių prastinimas taikant kelias laipsnių/šaknų savybes iš eilės; daugiklio iškėlimas prieš šaknies ženklą ir įkėlimas po juo (su raidėmis, kai nurodytas kintamojo ženklas); $\\sqrt[2k]{a^{2k}}=|a|$ taikymas; kvadratų skirtumo formulė su laipsniais su racionaliuoju rodikliu (pvz. $(a^{1/2}+b^{1/2})(a^{1/2}-b^{1/2})$); laipsnio su racionaliuoju rodikliu apibrėžimo sritis.
+
+Sunki: kelių žingsnių raidiniai reiškiniai su trupmenomis ir laipsniais su racionaliuoju rodikliu; sumos/skirtumo kubas ir kubų sumos/skirtumo formulės ($a^3\\pm b^3$ skaidymas); laipsniai su iracionaliaisiais rodikliais (pvz. $3^{1+\\sqrt{2}}\\cdot 3^{1-\\sqrt{2}}$); kombinuoti skaičiuojami reiškiniai su skirtingais pagrindais, šaknimis ir neigiamais rodikliais.`,
+  },
 };
 
 export function subtopicPromptKey(grade: number, slug: string): string {

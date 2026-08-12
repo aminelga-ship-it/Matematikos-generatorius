@@ -30,6 +30,86 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+type DeliveryInfo = { delivered_at: string };
+
+/** Pirmiausia dar nematytos; jei trūksta — seniausiai duotos. */
+function orderForUser(
+  rows: BankTaskRow[],
+  delivered: Map<string, DeliveryInfo>,
+): BankTaskRow[] {
+  const unseen = rows.filter((r) => !delivered.has(r.id));
+  const seen = rows
+    .filter((r) => delivered.has(r.id))
+    .sort((a, b) => {
+      const ta = delivered.get(a.id)!.delivered_at;
+      const tb = delivered.get(b.id)!.delivered_at;
+      return ta.localeCompare(tb);
+    });
+  return [...shuffle(unseen), ...shuffle(seen)];
+}
+
+async function fetchUserDeliveries(
+  supabaseAdmin: SupabaseClient,
+  userId: string,
+  itemIds: string[],
+): Promise<Map<string, DeliveryInfo>> {
+  const map = new Map<string, DeliveryInfo>();
+  if (!itemIds.length) return map;
+
+  const { data, error } = await supabaseAdmin
+    .from("user_bank_deliveries")
+    .select("task_bank_item_id, delivered_at")
+    .eq("user_id", userId)
+    .in("task_bank_item_id", itemIds);
+
+  if (error) {
+    console.error("user_bank_deliveries select:", error.message);
+    return map;
+  }
+  for (const row of data ?? []) {
+    const r = row as { task_bank_item_id: string; delivered_at: string };
+    map.set(r.task_bank_item_id, { delivered_at: r.delivered_at });
+  }
+  return map;
+}
+
+async function recordUserDeliveries(
+  supabaseAdmin: SupabaseClient,
+  userId: string,
+  itemIds: string[],
+): Promise<void> {
+  if (!itemIds.length) return;
+  const now = new Date().toISOString();
+
+  for (const task_bank_item_id of itemIds) {
+    const { data: existing } = await supabaseAdmin
+      .from("user_bank_deliveries")
+      .select("delivery_count")
+      .eq("user_id", userId)
+      .eq("task_bank_item_id", task_bank_item_id)
+      .maybeSingle();
+
+    if (existing) {
+      const prev = (existing as { delivery_count: number }).delivery_count ?? 0;
+      await supabaseAdmin
+        .from("user_bank_deliveries")
+        .update({
+          delivered_at: now,
+          delivery_count: prev + 1,
+        })
+        .eq("user_id", userId)
+        .eq("task_bank_item_id", task_bank_item_id);
+    } else {
+      await supabaseAdmin.from("user_bank_deliveries").insert({
+        user_id: userId,
+        task_bank_item_id,
+        delivered_at: now,
+        delivery_count: 1,
+      });
+    }
+  }
+}
+
 function rowToTask(row: BankTaskRow): TaskWithBankId {
   return {
     question: row.question,
@@ -56,6 +136,37 @@ export function curriculumSlot(
   return { topicId: null, subtopicId: null };
 }
 
+const BANK_ITEM_SELECT =
+  "id, question, answer, solution, diagram_config, function_equation, difficulty";
+
+function mergeBankRows(byId: Map<string, BankTaskRow>, rows: BankTaskRow[] | null | undefined) {
+  for (const row of rows ?? []) {
+    byId.set(row.id, row);
+  }
+}
+
+async function parentTopicIdsForSubtopics(
+  supabaseAdmin: SupabaseClient,
+  subtopicIds: string[],
+): Promise<string[]> {
+  if (!subtopicIds.length) return [];
+  const { data, error } = await supabaseAdmin
+    .from("curriculum_subtopics")
+    .select("topic_id")
+    .in("id", subtopicIds);
+  if (error) {
+    console.error("curriculum_subtopics lookup:", error.message);
+    return [];
+  }
+  return [
+    ...new Set(
+      ((data ?? []) as { topic_id: string | null }[])
+        .map((r) => r.topic_id)
+        .filter((id): id is string => typeof id === "string" && id.length > 0),
+    ),
+  ];
+}
+
 /** Orientacinis ~40/40/20 mišiniui; vieno lygio režime — tik tas pool. */
 export async function selectTasksFromBank(
   supabaseAdmin: SupabaseClient,
@@ -63,6 +174,7 @@ export async function selectTasksFromBank(
   filters: { subtopicIds: string[]; topicIds: string[] },
   taskCount: number,
   bankMode: BankDifficulty | "mix" = "mix",
+  userId?: string | null,
 ): Promise<{ tasks: TaskWithBankId[]; error?: string }> {
   const subtopicIds = filters.subtopicIds.filter(Boolean);
   const topicIds = filters.topicIds.filter(Boolean);
@@ -76,7 +188,7 @@ export async function selectTasksFromBank(
   if (subtopicIds.length) {
     const { data, error } = await supabaseAdmin
       .from("task_bank_items")
-      .select("id, question, answer, solution, diagram_config, function_equation, difficulty")
+      .select(BANK_ITEM_SELECT)
       .eq("grade", grade)
       .eq("status", "approved")
       .in("subtopic_id", subtopicIds);
@@ -85,15 +197,31 @@ export async function selectTasksFromBank(
       console.error("Bank select (subtopic) error:", error.message);
       return { tasks: [], error: "Nepavyko gauti užduočių iš banko." };
     }
-    for (const row of (data ?? []) as BankTaskRow[]) {
-      byId.set(row.id, row);
+    mergeBankRows(byId, data as BankTaskRow[]);
+
+    // Be potemės — ta pati tema, bet bet kuri pasirinkta potemė.
+    const parentTopicIds = await parentTopicIdsForSubtopics(supabaseAdmin, subtopicIds);
+    if (parentTopicIds.length) {
+      const { data: topicWide, error: topicWideError } = await supabaseAdmin
+        .from("task_bank_items")
+        .select(BANK_ITEM_SELECT)
+        .eq("grade", grade)
+        .eq("status", "approved")
+        .in("topic_id", parentTopicIds)
+        .is("subtopic_id", null);
+
+      if (topicWideError) {
+        console.error("Bank select (topic-wide for subtopics) error:", topicWideError.message);
+        return { tasks: [], error: "Nepavyko gauti užduočių iš banko." };
+      }
+      mergeBankRows(byId, topicWide as BankTaskRow[]);
     }
   }
 
   if (topicIds.length) {
     const { data, error } = await supabaseAdmin
       .from("task_bank_items")
-      .select("id, question, answer, solution, diagram_config, function_equation, difficulty")
+      .select(BANK_ITEM_SELECT)
       .eq("grade", grade)
       .eq("status", "approved")
       .in("topic_id", topicIds)
@@ -103,9 +231,7 @@ export async function selectTasksFromBank(
       console.error("Bank select (topic) error:", error.message);
       return { tasks: [], error: "Nepavyko gauti užduočių iš banko." };
     }
-    for (const row of (data ?? []) as BankTaskRow[]) {
-      byId.set(row.id, row);
-    }
+    mergeBankRows(byId, data as BankTaskRow[]);
   }
 
   const all = [...byId.values()];
@@ -113,15 +239,20 @@ export async function selectTasksFromBank(
     return { tasks: [] };
   }
 
+  const allIds = all.map((r) => r.id);
+  const delivered = userId
+    ? await fetchUserDeliveries(supabaseAdmin, userId, allIds)
+    : new Map<string, DeliveryInfo>();
+
   const pools: Record<BankDifficulty, BankTaskRow[]> = {
-    lengvos: shuffle(all.filter((r) => r.difficulty === "lengvos")),
-    vidutinės: shuffle(all.filter((r) => r.difficulty === "vidutinės")),
-    sunkios: shuffle(all.filter((r) => r.difficulty === "sunkios")),
+    lengvos: orderForUser(all.filter((r) => r.difficulty === "lengvos"), delivered),
+    vidutinės: orderForUser(all.filter((r) => r.difficulty === "vidutinės"), delivered),
+    sunkios: orderForUser(all.filter((r) => r.difficulty === "sunkios"), delivered),
   };
 
   if (bankMode !== "mix") {
     const pool = pools[bankMode];
-    const picked = shuffle(pool).slice(0, taskCount);
+    const picked = pool.slice(0, taskCount);
     if (picked.length === 0) {
       return { tasks: [] };
     }
@@ -142,6 +273,9 @@ export async function selectTasksFromBank(
             .eq("id", u.id)
         ),
       );
+    }
+    if (userId) {
+      await recordUserDeliveries(supabaseAdmin, userId, ids);
     }
     return { tasks: picked.map(rowToTask) };
   }
@@ -169,11 +303,11 @@ export async function selectTasksFromBank(
   let remV = takeFrom(pools.vidutinės, wantVidutines);
   let remS = takeFrom(pools.sunkios, wantSunkios);
 
-  const remainder = shuffle([
+  const remainder = [
     ...pools.lengvos.filter((r) => !usedIds.has(r.id)),
     ...pools.vidutinės.filter((r) => !usedIds.has(r.id)),
     ...pools.sunkios.filter((r) => !usedIds.has(r.id)),
-  ]);
+  ];
 
   for (const row of remainder) {
     if (picked.length >= taskCount) break;
@@ -186,7 +320,7 @@ export async function selectTasksFromBank(
   void remV;
   void remS;
 
-  const finalPick = shuffle(picked).slice(0, taskCount);
+  const finalPick = picked.slice(0, taskCount);
   if (finalPick.length === 0) {
     return { tasks: [] };
   }
@@ -211,7 +345,11 @@ export async function selectTasksFromBank(
     );
   }
 
-  return { tasks: finalPick.map(rowToTask) };
+  if (userId) {
+    await recordUserDeliveries(supabaseAdmin, userId, ids);
+  }
+
+  return { tasks: shuffle(finalPick).map(rowToTask) };
 }
 
 export async function insertTasksAsBankDrafts(
@@ -226,6 +364,8 @@ export async function insertTasksAsBankDrafts(
     /** Pasirinktos potemės/temos — kiekvienai užduočiai rotacija */
     curriculum?: { subtopicIds: string[]; topicIds: string[] };
     difficultyForIndex?: (index: number) => BankDifficulty;
+    /** Visada draft kol mokytojas/admin nepatvirtina. */
+    bankStatus?: "draft" | "approved";
     tasks: Array<{
       question: string;
       answer: string;
@@ -236,6 +376,9 @@ export async function insertTasksAsBankDrafts(
   },
 ): Promise<TaskWithBankId[]> {
   const result: TaskWithBankId[] = [];
+  const bankStatus = params.bankStatus ?? "draft";
+  const reviewedAt = bankStatus === "approved" ? new Date().toISOString() : null;
+  const reviewedBy = bankStatus === "approved" ? params.createdBy : null;
 
   const subtopicIdsForLookup = new Set<string>();
   if (params.curriculum) {
@@ -280,10 +423,12 @@ export async function insertTasksAsBankDrafts(
         solution: t.solution ?? "",
         diagram_config: t.diagram_config ?? null,
         function_equation: t.function_equation ?? null,
-        status: "draft",
+        status: bankStatus,
         source: "ai_generated",
         generation_prompt: params.generationPrompt,
         created_by: params.createdBy,
+        reviewed_by: reviewedBy,
+        reviewed_at: reviewedAt,
       })
       .select("id")
       .single();

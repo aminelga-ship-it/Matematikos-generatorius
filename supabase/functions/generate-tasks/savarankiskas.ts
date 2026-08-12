@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
-import { buildDifficultyDescription } from "./prompt.ts";
 import { buildSubtopicPromptBlock } from "./subtopicPrompts.ts";
 
 export type TopicPromptResult = {
@@ -17,8 +16,6 @@ export async function buildSavarankiskasTopicPrompt(
   difficulty: string,
   taskCount: number,
 ): Promise<TopicPromptResult> {
-  const difficultyLine = buildDifficultyDescription(difficulty, grade, taskCount, true);
-
   const topicIdSet = new Set<string>(topicIds);
   const selectedSubRows: { id: string; title: string; topic_id: string; slug: string }[] = [];
 
@@ -40,8 +37,8 @@ export async function buildSavarankiskasTopicPrompt(
   if (scopedTopicIds.length === 0) {
     return {
       prompt: [
-        `Generuok ${taskCount} užduotis pagal ${grade} kl. matematikos programą.`,
-        `Sunkumo lygis: ${difficultyLine}`,
+        `Generuok ${taskCount} užduotis.`,
+        `Klasė: ${grade}`,
         "Vartotojas nepasirinko konkrečios temos — laikykis bendros klasės programos.",
       ].join("\n\n"),
       subtopicGuided: false,
@@ -125,24 +122,11 @@ export async function buildSavarankiskasTopicPrompt(
     };
   }
 
-  const contextBlocks: string[] = [];
-  for (const topicId of scopedTopicIds) {
-    const topicTitle = topicTitleById.get(topicId) ?? "Tema";
-    const topicSubs = subsByTopic.get(topicId) ?? [];
-    if (topicSubs.length === 0) {
-      contextBlocks.push(`Tema „${topicTitle}“ (potemių sąrašo nėra).`);
-    } else {
-      const names = topicSubs.map((s) => s.title).join("; ");
-      contextBlocks.push(`Tema „${topicTitle}“ — visos potemės (kontekstui, ne generuok kitų temų): ${names}.`);
-    }
-  }
-
   return {
     prompt: [
       intro,
-      `Sunkumo lygis (${grade} kl.): ${difficultyLine}`,
+      `Klasė: ${grade}`,
       `Fokusas — generuok tik iš: ${focusLine}. Įvairink uždavinius, vengk kopijų.`,
-      contextBlocks.join("\n"),
     ].join("\n\n"),
     subtopicGuided: false,
   };

@@ -36,7 +36,7 @@ JOIN curriculum_subtopics s ON s.topic_id = t.id
 CROSS JOIN (VALUES
   ('Apskaičiuokite: $([-1;\,4] \cap [2;\,6]) \setminus (3;\,5)$.', '$[2;\,3] \cup \{4\}$'),
   ('Apskaičiuokite: $([-3;\,2] \cup [1;\,5]) \setminus [-1;\,3]$.', '$[-3;\,-1) \cup (3;\,5]$'),
-  ('Raskite dviženklių natūraliųjų skaičių, kurie dalijasi iš $5$, ir dviženklių skaičių, kurie baigiasi skaitmeniu $1$, aibių sankirtą.', '$\{51\}$'),
+  ('Raskite dviženklių natūraliųjų skaičių, kurie dalijasi iš $7$, ir dviženklių skaičių, kurie baigiasi skaitmeniu $7$, aibių sankirtą.', '$\{77\}$'),
   ('Dviženklį skaičių $10a+b$ sudaro skaitmenys $a$ ir $b$. Raskite tokių dviženklių skaičių, kurie dalijasi iš $3$ ir kurių $a+b=9$, aibę.', '$\{18;\,27;\,36;\,45;\,54;\,63;\,72;\,81;\,90\}$')
 ) AS v(q, a)
 WHERE t.grade = 11 AND t.slug = '11-skaiciavimai' AND s.slug = 'aibes';

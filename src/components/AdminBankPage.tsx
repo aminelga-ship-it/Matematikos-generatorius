@@ -19,12 +19,17 @@ interface AdminBankPageProps {
   onBack: () => void;
 }
 
-const STATUS_FILTERS: { value: TaskBankStatus | "all"; label: string }[] = [
+const STATUS_FILTERS: { value: TaskBankStatus; label: string }[] = [
   { value: "draft", label: "Redaguotinos" },
   { value: "approved", label: "Patvirtintos" },
   { value: "rejected", label: "Atmestos" },
-  { value: "all", label: "Visos" },
 ];
+
+const ADMIN_LIST_LIMIT: Record<TaskBankStatus, number | null> = {
+  draft: null,
+  approved: 10,
+  rejected: 5,
+};
 
 const GRADE_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -37,6 +42,64 @@ function formatFeedbackDate(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function sortedFeedback(item: TaskBankItemWithMeta): TaskBankItemWithMeta["feedback"] {
+  return [...(item.feedback ?? [])].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+}
+
+function feedbackLabel(type: string): string {
+  return (TASK_FEEDBACK_LABELS as Record<string, string>)[type] ?? type;
+}
+
+function AdminFeedbackBlock({
+  feedback,
+  compact = false,
+}: {
+  feedback: TaskBankItemWithMeta["feedback"];
+  compact?: boolean;
+}) {
+  const list = [...(feedback ?? [])].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+  if (list.length === 0) {
+    return compact ? null : (
+      <p className="text-xs text-slate-500 italic">Mokytojo įvertinimų nėra.</p>
+    );
+  }
+  if (compact) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {list.map((fb) => (
+          <span
+            key={fb.id}
+            className="inline-flex items-center max-w-full text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-900 border border-indigo-200"
+            title={fb.comment ?? undefined}
+          >
+            {feedbackLabel(fb.feedback_type)}
+          </span>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <ul className="space-y-2">
+      {list.map((fb) => (
+        <li
+          key={fb.id}
+          className="text-xs text-slate-700 bg-white rounded-lg border border-indigo-200 px-3 py-2"
+        >
+          <span className="font-semibold text-indigo-900">{feedbackLabel(fb.feedback_type)}</span>
+          <span className="text-slate-400 ml-2">{formatFeedbackDate(fb.created_at)}</span>
+          {fb.comment && (
+            <p className="mt-1 text-slate-600 whitespace-pre-wrap">{fb.comment}</p>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 type CurriculumCache = {
@@ -80,7 +143,7 @@ function effectiveTopicId(d: TaskBankItem, cache: CurriculumCache | undefined): 
 }
 
 export function AdminBankPage({ onBack }: AdminBankPageProps) {
-  const [statusFilter, setStatusFilter] = useState<TaskBankStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<TaskBankStatus>("draft");
   const [items, setItems] = useState<TaskBankItemWithMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -113,12 +176,16 @@ export function AdminBankPage({ onBack }: AdminBankPageProps) {
     }
   }, []);
 
-  const load = useCallback(async (statusOverride?: TaskBankStatus | "all") => {
+  const load = useCallback(async (statusOverride?: TaskBankStatus) => {
     const status = statusOverride ?? statusFilter;
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchAdminBankItems({ status });
+      const limit = ADMIN_LIST_LIMIT[status];
+      const data = await fetchAdminBankItems({
+        status,
+        limit: limit ?? 5000,
+      });
       setItems(data);
       const counts = await fetchBankStatusCounts();
       setStatusCounts(counts);
@@ -304,11 +371,7 @@ export function AdminBankPage({ onBack }: AdminBankPageProps) {
               }`}
             >
               {f.label}
-              {f.value !== "all" && statusCounts
-                ? ` (${statusCounts[f.value]})`
-                : f.value === "all" && statusCounts
-                  ? ` (${statusCounts.draft + statusCounts.approved + statusCounts.rejected})`
-                  : ""}
+              {statusCounts ? ` (${statusCounts[f.value]})` : ""}
             </button>
           ))}
         </div>
@@ -317,6 +380,13 @@ export function AdminBankPage({ onBack }: AdminBankPageProps) {
       <p className="text-xs text-slate-500 -mt-2">
         Redaguokite vieną užduotį ir spauskite „Patvirtinti“. „Klonuoti“ sukuria visiškai atskirą kopiją (juodraštį) — pradinė lieka nepaliesta.
         Mokytojo „Tinkama užduotis“ patvirtina automatiškai.
+        {statusFilter === "approved" && (
+          <> Rodomos 10 naujausios patvirtintos; senesnės lieka banke.</>
+        )}
+        {statusFilter === "rejected" && (
+          <> Rodomos 5 naujausios atmestos; senesnės lieka banke.</>
+        )}
+        {statusFilter === "draft" && <> Rodomos visos redaguotinos.</>}
       </p>
 
       {error && (
@@ -337,15 +407,12 @@ export function AdminBankPage({ onBack }: AdminBankPageProps) {
         <p className="text-center text-slate-500 py-12">
           Užduočių pagal filtrą „{STATUS_FILTERS.find((f) => f.value === statusFilter)?.label}“ nėra.
           {statusCounts && statusFilter === "draft" && statusCounts.approved > 0
-            ? ` Yra ${statusCounts.approved} patvirtintų — perjunkite „Patvirtintos“ arba „Visos“.`
+            ? ` Yra ${statusCounts.approved} patvirtintų — perjunkite „Patvirtintos“.`
             : ""}
-          {statusCounts && statusFilter === "approved" && statusCounts.approved > 0
-            ? " Skaičiuoklė rodo patvirtintų — bandykite „Visos“ arba perkraukite puslapį."
-            : ""}
-          {statusCounts && statusFilter !== "all"
-            ? ` Banke (šis statusas): ${statusCounts[statusFilter as TaskBankStatus] ?? 0}.`
+          {statusCounts && statusFilter !== "draft"
+            ? ` Banke (šis statusas): ${statusCounts[statusFilter] ?? 0}.`
             : statusCounts
-              ? ` Iš viso banke: ${statusCounts.draft + statusCounts.approved + statusCounts.rejected}.`
+              ? ` Banke redaguotinų: ${statusCounts.draft}.`
               : ""}
           {statusCounts &&
           statusCounts.draft + statusCounts.approved + statusCounts.rejected === 0
@@ -363,6 +430,7 @@ export function AdminBankPage({ onBack }: AdminBankPageProps) {
             const topicLine = resolveTopicLine(d, item, cache);
             const selectedTopicId = effectiveTopicId(d, cache);
             const subtopicsForTopic = cache?.subtopics.filter((s) => s.topic_id === selectedTopicId) ?? [];
+            const feedbackList = sortedFeedback(item);
 
             return (
               <li
@@ -395,9 +463,12 @@ export function AdminBankPage({ onBack }: AdminBankPageProps) {
                         {topicLine}
                       </span>
                     )}
-                    {(item.feedback?.length ?? 0) > 0 && (
-                      <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                        Feedback: {item.feedback!.length}
+                    {feedbackList.length > 0 && (
+                      <span className="w-full sm:w-auto flex flex-wrap gap-1.5 items-center">
+                        <span className="text-[10px] font-bold text-indigo-600 uppercase shrink-0">
+                          Įvertinimas:
+                        </span>
+                        <AdminFeedbackBlock feedback={item.feedback} compact />
                       </span>
                     )}
                   </div>
@@ -426,6 +497,12 @@ export function AdminBankPage({ onBack }: AdminBankPageProps) {
                       <p className="text-[10px] font-bold text-violet-700 uppercase tracking-wide">
                         Klasė, tema ir potemė
                       </p>
+                      <div className="rounded-lg border border-indigo-200 bg-indigo-50/80 px-3 py-2.5 space-y-2">
+                        <p className="text-[10px] font-bold text-indigo-800 uppercase tracking-wide">
+                          Mokytojo įvertinimas
+                        </p>
+                        <AdminFeedbackBlock feedback={item.feedback} />
+                      </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Klasė</label>
                         <select
@@ -518,30 +595,6 @@ export function AdminBankPage({ onBack }: AdminBankPageProps) {
                         <p className="text-xs text-slate-500 italic">Potemė nepriskirta — reikalinga savarankiškam darbui iš banko.</p>
                       )}
                     </div>
-
-                    {(item.feedback?.length ?? 0) > 0 && (
-                      <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 px-3 py-3 space-y-2">
-                        <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide">
-                          Mokytojo feedback
-                        </p>
-                        <ul className="space-y-2">
-                          {item.feedback!.map((fb) => (
-                            <li
-                              key={fb.id}
-                              className="text-xs text-slate-700 bg-white rounded-lg border border-indigo-100 px-3 py-2"
-                            >
-                              <span className="font-semibold text-indigo-800">
-                                {TASK_FEEDBACK_LABELS[fb.feedback_type]}
-                              </span>
-                              <span className="text-slate-400 ml-2">{formatFeedbackDate(fb.created_at)}</span>
-                              {fb.comment && (
-                                <p className="mt-1 text-slate-600 whitespace-pre-wrap">{fb.comment}</p>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
 
                     <label className="block text-[10px] font-bold text-slate-400 uppercase">Klausimas</label>
                     <textarea

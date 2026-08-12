@@ -1,4 +1,5 @@
 import { Header } from './components/Header';
+import { PageBackground } from './components/PageBackground';
 import { useState, useEffect, useCallback } from "react";
 import { AlertCircle } from "lucide-react";
 import { GenerateForm } from "./components/GenerateForm";
@@ -8,7 +9,7 @@ import { PricingPage } from "./components/PricingPage";
 import { GuidePage } from "./components/GuidePage";
 import { AdminBankPage } from "./components/AdminBankPage";
 import { RolePickerModal } from "./components/RolePickerModal";
-import { generateTasks, saveSession, getRecentSessions, loadSession } from "./lib/api";
+import { generateTasks, saveSession, getRecentSessions, loadSession, ProLimitExhaustedError } from "./lib/api";
 import { updateTaskBankItem, createGeneratedTaskBankDraft } from "./lib/bankApi";
 import type { Task, MathSession, Difficulty, GenerationMode, BankDifficulty } from "./lib/types";
 import { usePlan, useUpgradeGate } from './lib/usePlan';
@@ -36,6 +37,7 @@ export default function App() {
   const [withSolution, setWithSolution] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [proLimitExhausted, setProLimitExhausted] = useState(false);
   const [generationMeta, setGenerationMeta] = useState<{ bankCount: number; aiCount: number } | null>(null);
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [showAnswers, setShowAnswers] = useState(false);
@@ -59,6 +61,12 @@ export default function App() {
   }, [user, profile]);
 
   const goToPricing = useCallback(() => setView((v) => (v === 'pricing' ? 'app' : 'pricing')), []);
+  const goToLimitTopUp = useCallback(() => {
+    setView('pricing');
+    window.setTimeout(() => {
+      document.getElementById('limit-topup')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+  }, []);
   const goToGuide = useCallback(() => setView((v) => (v === 'guide' ? 'app' : 'guide')), []);
 
   useEffect(() => {
@@ -94,8 +102,13 @@ export default function App() {
   }, []);
 
   const handleGenerate = useCallback(async () => {
+    if (!user) {
+      setError("Norėdami generuoti užduotis, prisijunkite.");
+      return;
+    }
     setLoading(true);
     setError(null);
+    setProLimitExhausted(false);
 
     try {
       const effectiveWithDiagram = grade <= 6 ? withDiagram : false;
@@ -142,11 +155,17 @@ export default function App() {
         setSessions((prev) => [saved, ...prev].slice(0, 10));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Įvyko nežinoma klaida.");
+      if (err instanceof ProLimitExhaustedError) {
+        setProLimitExhausted(true);
+        setError(err.message);
+      } else {
+        setProLimitExhausted(false);
+        setError(err instanceof Error ? err.message : "Įvyko nežinoma klaida.");
+      }
     } finally {
       setLoading(false);
     }
-  }, [grade, taskCount, prompt, difficulty, generationMode, imageBase64, withDiagram, withGraph, withSolution, subtopicIds, topicIds]);
+  }, [user, grade, taskCount, prompt, difficulty, generationMode, imageBase64, withDiagram, withGraph, withSolution, subtopicIds, topicIds]);
 
   const handleSelectSession = useCallback(async (id: string) => {
     const session = await loadSession(id);
@@ -237,6 +256,8 @@ export default function App() {
           question: updated.question,
           answer: updated.answer,
           solution: updated.solution,
+          function_equation: updated.function_equation ?? null,
+          diagram_config: updated.diagram_config ?? null,
           source: isAdmin ? "manual" : "user_corrected",
         }).catch((e) => console.error("Bank update:", e));
       }
@@ -252,7 +273,8 @@ export default function App() {
   const showTeacherFeedback = profile?.role === "teacher" || isAdmin;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen flex flex-col relative">
+      <PageBackground />
       <Header
         onOpenPricing={goToPricing}
         pricingOpen={view === 'pricing'}
@@ -307,21 +329,30 @@ export default function App() {
                   <span className="text-blue-600">užduotis akimirksniu</span>
                 </h2>
                 <p className="text-slate-500 text-base max-w-2xl mx-auto">
-                  Pasirink klasę, sunkumą ir būdą — pagal temą iš banko arba pagal savo aprašymą.{" "}
-                  <button
-                    type="button"
-                    onClick={goToGuide}
-                    className="text-blue-600 font-medium hover:underline"
-                  >
-                    Kaip tinkamai generuoti užduotis?
-                  </button>
+                  Pasirinkite klasę, sudėtingumo lygį, užduočių kiekį ir generavimo būdą
                 </p>
               </div>
 
               {error && (
                 <div className="flex items-start gap-3 px-4 py-3.5 bg-red-50 rounded-xl border border-red-100">
                   <AlertCircle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-700">{error}</p>
+                  <p className="text-sm text-red-700">
+                    {proLimitExhausted ? (
+                      <>
+                        Atsiprašome, jūsų limitas išnaudotas.{" "}
+                        <button
+                          type="button"
+                          onClick={goToLimitTopUp}
+                          className="font-semibold text-amber-800 underline hover:text-amber-900"
+                        >
+                          Papildykite limitus
+                        </button>
+                        .
+                      </>
+                    ) : (
+                      error
+                    )}
+                  </p>
                 </div>
               )}
 

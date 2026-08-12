@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 
 interface GeoGebraGraphProps {
   equation?: string | null;
@@ -7,62 +7,97 @@ interface GeoGebraGraphProps {
 
 declare global {
   interface Window {
-    GGBApplet?: any;
+    GGBApplet?: new (
+      params: Record<string, unknown>,
+      useBrowserForJS: boolean,
+    ) => { inject: (elementId: string) => void };
   }
 }
 
-export const GeoGebraGraph: React.FC<GeoGebraGraphProps> = ({ equation, height = 500 }) => {
+function measureContainerWidth(el: HTMLElement): number {
+  return Math.max(280, Math.floor(el.getBoundingClientRect().width));
+}
+
+export const GeoGebraGraph: React.FC<GeoGebraGraphProps> = ({ equation, height = 260 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const rawId = useId();
+  const elementId = `ggb-${rawId.replace(/:/g, '')}`;
+
   useEffect(() => {
-    // Parameterai iš GeoGebra dokumentacijos
-    const params = {
-      appName: 'graphing',
-      width: 800,
-      height: height,
-      showToolBar: true,
-      showAlgebraInput: true,
-      showMenuBar: true,
-      showResetIcon: true,
-      appletOnLoad: (api: any) => {
-        if (equation && api) {
-          const cleanEq = equation.replace(/^y\s*=\s*/, '').trim();
-          try {
-            api.evalCommand(`f(x) = ${cleanEq}`);
-          } catch (e) {
-            console.warn('GeoGebra komandos klaida:', e);
-          }
-        }
-      },
-    };
+    const container = containerRef.current;
+    if (!container) return;
+
+    let interval: ReturnType<typeof setInterval> | undefined;
+    let cancelled = false;
 
     const injectGeoGebra = () => {
+      if (cancelled || !window.GGBApplet) return;
+
+      const width = measureContainerWidth(container);
+
+      const mount = document.createElement('div');
+      mount.id = elementId;
+      mount.style.width = '100%';
+      mount.style.minHeight = `${height}px`;
+      container.replaceChildren(mount);
+
+      const params = {
+        appName: 'graphing',
+        width,
+        height,
+        showToolBar: false,
+        showAlgebraInput: false,
+        showMenuBar: false,
+        showResetIcon: true,
+        enableRightClick: false,
+        enableShiftDragZoom: true,
+        appletOnLoad: (api: { evalCommand: (cmd: string) => void }) => {
+          if (equation && api) {
+            const cleanEq = equation.replace(/^y\s*=\s*/, '').trim();
+            try {
+              api.evalCommand(`f(x) = ${cleanEq}`);
+            } catch (e) {
+              console.warn('GeoGebra komandos klaida:', e);
+            }
+          }
+        },
+      };
+
+      if (!document.getElementById(elementId)) return;
+      const ggbApplet = new window.GGBApplet(params, true);
+      ggbApplet.inject(elementId);
+    };
+
+    const start = () => {
       if (window.GGBApplet) {
-        const ggbApplet = new window.GGBApplet(params, true);
-        // Tiesiogiai inject'iname į div su id "ggb-element"
-        ggbApplet.inject('ggb-element');
+        injectGeoGebra();
+      } else {
+        interval = setInterval(() => {
+          if (window.GGBApplet) {
+            clearInterval(interval);
+            injectGeoGebra();
+          }
+        }, 100);
       }
     };
 
-    // Jei skriptas jau užsikrovęs – leidžiame iškart
-    if (window.GGBApplet) {
-      injectGeoGebra();
-    } else {
-      // Jei skriptas dar kraunasi iš index.html, tikriname kas 100ms
-      const interval = setInterval(() => {
-        if (window.GGBApplet) {
-          clearInterval(interval);
-          injectGeoGebra();
-        }
-      }, 100);
+    requestAnimationFrame(() => requestAnimationFrame(start));
 
-      return () => clearInterval(interval);
-    }
-  }, [equation, height]);
+    return () => {
+      cancelled = true;
+      if (interval) clearInterval(interval);
+      container.replaceChildren();
+    };
+  }, [equation, height, elementId]);
 
   return (
-    <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-2 font-semibold text-slate-700">📐 GeoGebra Braižyklė</div>
-
-      <div id="ggb-element" className="w-full overflow-hidden rounded-lg min-h-[500px] bg-slate-50" />
+    <div className="w-full min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="mb-1.5 text-xs font-semibold text-slate-600">GeoGebra grafikas</div>
+      <div
+        ref={containerRef}
+        className="ggb-graph-host w-full overflow-hidden rounded-lg bg-slate-50 [&_iframe]:max-w-full"
+        style={{ minHeight: height }}
+      />
     </div>
   );
 };

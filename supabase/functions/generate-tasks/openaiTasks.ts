@@ -3,6 +3,7 @@ import {
   buildSystemPrompt,
   buildUserMessage,
   isImageOnlyRequest,
+  isReasoningChatModel,
   selectModel,
   selectTemperature,
   type SystemPromptProfile,
@@ -47,8 +48,17 @@ export async function generateTasksViaOpenAI(params: {
 
   const effectiveIncludeSolutions = promptProfile === "image-only" ? false : includeSolutions;
 
+  const model = selectModel(grade, difficulty, withDiagram, withGraph);
+  const reasoning = isReasoningChatModel(model);
+  let tokenLimit = effectiveIncludeSolutions
+    ? 8000
+    : Math.min(6000, 600 + taskCount * 320);
+  if (reasoning) {
+    tokenLimit = Math.max(tokenLimit * 2, 12_000);
+  }
+
   const openaiBody: Record<string, unknown> = {
-    model: selectModel(grade),
+    model,
     messages: [
       {
         role: "system",
@@ -65,10 +75,12 @@ export async function generateTasksViaOpenAI(params: {
       },
       { role: "user", content: userContent },
     ],
-    temperature: selectTemperature(grade, difficulty),
-    max_tokens: effectiveIncludeSolutions
-      ? 8000
-      : Math.min(6000, 600 + taskCount * 320),
+    ...(reasoning
+      ? { max_completion_tokens: tokenLimit }
+      : {
+        max_tokens: tokenLimit,
+        temperature: selectTemperature(grade, difficulty),
+      }),
   };
 
   if (!imageBase64) {
@@ -86,7 +98,7 @@ export async function generateTasksViaOpenAI(params: {
 
   if (!response.ok) {
     const errText = await response.text();
-    console.error("OpenAI error:", errText);
+    console.error("OpenAI error:", model, errText);
     return { error: "Nepavyko susisiekti su AI paslauga." };
   }
 

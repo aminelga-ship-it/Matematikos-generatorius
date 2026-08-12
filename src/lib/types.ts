@@ -16,7 +16,11 @@ export type TaskBankSource = "ai_generated" | "manual" | "user_corrected";
 
 export type BankDifficulty = "lengvos" | "vidutinės" | "sunkios";
 
+export const PRO_LIMIT_EXHAUSTED_MESSAGE =
+  "Atsiprašome, jūsų limitas išnaudotas. Papildykite limitus.";
+
 export type TaskFeedbackType =
+  | "excellent"
   | "suitable"
   | "fix_text"
   | "fix_solution"
@@ -24,11 +28,12 @@ export type TaskFeedbackType =
   | "unsuitable";
 
 export const TASK_FEEDBACK_LABELS: Record<TaskFeedbackType, string> = {
-  suitable: "Tinkama užduotis",
-  fix_text: "Reikia koreguoti tekstą",
-  fix_solution: "Reikia koreguoti sprendimą / atsakymą",
-  wrong_difficulty: "Netinkamas sunkumas",
-  unsuitable: "Netinkama užduotis",
+  excellent: "Puiki",
+  suitable: "Tinkama",
+  fix_text: "Redaguotina užduotis",
+  fix_solution: "Netinkamas atsakymas/sprendimas",
+  wrong_difficulty: "Netinkamas sunkumas/klasė/tema",
+  unsuitable: "Netinkama",
 };
 
 export const TASK_BANK_STATUS_LABELS: Record<TaskBankStatus, string> = {

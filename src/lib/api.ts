@@ -1,7 +1,7 @@
 import { supabase } from "./supabase";
 import type { Task, MathSession, Difficulty, GenerationMode } from "./types";
+import { PRO_LIMIT_EXHAUSTED_MESSAGE } from "./types";
 import { getSiteOrigin } from "./siteUrl";
-import { isDevGuestAsPro } from "./devFlags";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -9,7 +9,14 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const GENERATE_TASKS_URL = `${SUPABASE_URL}/functions/v1/generate-tasks`;
 const CHECKOUT_SESSION_URL = `${SUPABASE_URL}/functions/v1/create-checkout-session`;
 
-export type CheckoutPlan = "PRO mėnesinis" | "PRO mokslo metų" | "Limitų papildymas";
+export type CheckoutPlan = "PRO mėnesinis" | "UNLIMITED mėnesinis" | "Limitų papildymas";
+
+export class ProLimitExhaustedError extends Error {
+  constructor(message = PRO_LIMIT_EXHAUSTED_MESSAGE) {
+    super(message);
+    this.name = "ProLimitExhaustedError";
+  }
+}
 
 async function getAccessToken(): Promise<string> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -48,11 +55,6 @@ export async function createCheckoutSession(plan: CheckoutPlan): Promise<string>
   return data.url;
 }
 
-async function getOptionalAccessToken(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token ?? null;
-}
-
 export interface GenerateTasksMeta {
   fromBank: boolean;
   bankCount: number;
@@ -77,12 +79,13 @@ export async function generateTasks(
   topicIds?: string[],
   generationMode: GenerationMode = "text",
 ): Promise<GenerateTasksResult> {
-  const token = await getOptionalAccessToken();
+  const token = await getAccessToken();
+
   const response = await fetch(GENERATE_TASKS_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token ?? SUPABASE_ANON_KEY}`,
+      Authorization: `Bearer ${token}`,
       apikey: SUPABASE_ANON_KEY,
     },
     body: JSON.stringify({
@@ -97,13 +100,17 @@ export async function generateTasks(
       withSolution: withSolution ?? false,
       ...(subtopicIds?.length ? { subtopicIds } : {}),
       ...(topicIds?.length ? { topicIds } : {}),
-      ...(isDevGuestAsPro() ? { devGuestPro: true } : {}),
     }),
   });
 
   const data = await response.json();
 
   if (!response.ok || data.error) {
+    if (data.code === "pro_limit") {
+      throw new ProLimitExhaustedError(
+        typeof data.error === "string" ? data.error : PRO_LIMIT_EXHAUSTED_MESSAGE,
+      );
+    }
     throw new Error(data.error ?? `Klaida: ${response.status}`);
   }
 

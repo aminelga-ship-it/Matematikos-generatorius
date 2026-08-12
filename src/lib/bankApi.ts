@@ -160,7 +160,39 @@ export async function submitTaskFeedback(
     return "deleted";
   }
 
-  if (feedbackType === "suitable") {
+  if (feedbackType === "suitable" || feedbackType === "excellent") {
+    let topic_id = curriculum?.topic_id ?? null;
+    let subtopic_id = curriculum?.subtopic_id ?? null;
+    if (!topic_id && !subtopic_id) {
+      const { data: item } = await supabase
+        .from("task_bank_items")
+        .select("topic_id, subtopic_id")
+        .eq("id", taskBankItemId)
+        .maybeSingle();
+      topic_id = (item?.topic_id as string | null) ?? null;
+      subtopic_id = (item?.subtopic_id as string | null) ?? null;
+    }
+
+    if (!topic_id && !subtopic_id) {
+      const { error: fbError } = await supabase.from("task_bank_feedback").insert({
+        task_bank_item_id: taskBankItemId,
+        user_id: user.id,
+        feedback_type: feedbackType === "excellent" ? "excellent" : "suitable",
+        comment: comment?.trim() || null,
+      });
+      if (fbError) throw new Error(fbError.message);
+
+      const { error } = await supabase
+        .from("task_bank_items")
+        .update({
+          status: "draft",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", taskBankItemId);
+      if (error) throw new Error(error.message);
+      return "draft";
+    }
+
     const { error } = await supabase
       .from("task_bank_items")
       .update({
@@ -168,8 +200,8 @@ export async function submitTaskFeedback(
         reviewed_by: user.id,
         reviewed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        ...(curriculum?.subtopic_id ? { subtopic_id: curriculum.subtopic_id } : {}),
-        ...(curriculum?.topic_id ? { topic_id: curriculum.topic_id } : {}),
+        ...(subtopic_id ? { subtopic_id } : {}),
+        ...(topic_id ? { topic_id } : {}),
       })
       .eq("id", taskBankItemId);
     if (error) throw new Error(error.message);
@@ -287,6 +319,25 @@ export async function fetchAdminBankItems(options?: {
   status?: TaskBankStatus | "all";
   limit?: number;
 }): Promise<TaskBankItemWithMeta[]> {
+  const rowLimit = options?.limit ?? 500;
+  const statusFilter = options?.status;
+
+  let idQuery = supabase
+    .from("task_bank_items")
+    .select("id")
+    .order("updated_at", { ascending: false })
+    .limit(rowLimit);
+
+  if (statusFilter && statusFilter !== "all") {
+    idQuery = idQuery.eq("status", statusFilter);
+  }
+
+  const { data: idRows, error: idError } = await idQuery;
+  if (idError) throw new Error(idError.message);
+
+  const ids = (idRows ?? []).map((r) => r.id as string);
+  if (ids.length === 0) return [];
+
   const baseSelect = `
       *,
       topic:curriculum_topics (
@@ -312,31 +363,23 @@ export async function fetchAdminBankItems(options?: {
       )
     `;
 
-  let q = supabase
+  let { data, error } = await supabase
     .from("task_bank_items")
     .select(baseSelect)
-    .order("updated_at", { ascending: false })
-    .limit(options?.limit ?? 500);
-
-  if (options?.status && options.status !== "all") {
-    q = q.eq("status", options.status);
-  }
-
-  let { data, error } = await q;
+    .in("id", ids)
+    .order("updated_at", { ascending: false });
 
   if (error) {
-    let fallback = supabase
-      .from("task_bank_items")
-      .select("*")
-      .order("updated_at", { ascending: false })
-      .limit(options?.limit ?? 500);
-    if (options?.status && options.status !== "all") {
-      fallback = fallback.eq("status", options.status);
-    }
+    let fallback = supabase.from("task_bank_items").select("*").in("id", ids).order("updated_at", {
+      ascending: false,
+    });
     const res = await fallback;
     if (res.error) throw new Error(res.error.message);
     data = res.data as typeof data;
   }
+
+  const cap =
+    statusFilter === "approved" ? 10 : statusFilter === "rejected" ? 5 : undefined;
 
   type RawRow = TaskBankItem & {
     topic?: { id: string; title: string; grade: number } | null;
@@ -348,7 +391,9 @@ export async function fetchAdminBankItems(options?: {
     feedback?: TaskBankItemWithMeta["feedback"];
   };
 
-  return ((data ?? []) as RawRow[]).map((row) => {
+  return ((data ?? []) as RawRow[])
+    .slice(0, cap ?? undefined)
+    .map((row) => {
     const { subtopic, topic, feedback, ...item } = row;
     const sortedFeedback = [...(feedback ?? [])].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
@@ -387,6 +432,10 @@ export async function saveAndReviewBankItem(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Prisijunkite.");
 
+  if (status === "approved" && !content.topic_id && !content.subtopic_id) {
+    throw new Error("Patvirtintai užduočiai būtina tema arba potemė.");
+  }
+
   const { error } = await supabase
     .from("task_bank_items")
     .update({
@@ -406,10 +455,6 @@ export async function saveAndReviewBankItem(
     .eq("id", id);
 
   if (error) throw new Error(error.message);
-
-  if (status === "approved") {
-    await clearTaskBankFeedback(id);
-  }
 }
 
 export async function reviewBankItem(

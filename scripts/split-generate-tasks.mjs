@@ -134,7 +134,7 @@ import { buildDiagramSection } from "./diagram.ts";
 const difficultyDescriptions: Record<string, string> = {
   lengvos: "Lengvos: 1 aiškus žingsnis, tiesioginis taikymas.",
   vidutinės: \`Vidutinės: ≥2 nepriklausomi loginiai žingsniai. Draudžiama: vienas formulės įstatymas su visomis reikšmėmis (per lengva). Pirmiau rask trūkstamą dydį, tada naudok toliau arba sujunk 2 taisykles.\`,
-  sunkios: \`Sunkios (9–12 kl., VBE lygis): 4–6 žingsniai; keitimas kintamuoju (t=2^x, sin x=t); ODA/intervalai su $\\\\cup$/$\\\\cap$; kombinuotos sąlygos. Tipai: rodiklinės/log/trig. nelygybės, modulis. Be trivialių vieno žingsnio lygčių.\`,
+  sunkios: \`Sunkios (9–12 kl., VBE lygis): 4–6 žingsniai; keitimas kintamuoju (t=2^x, sin x=t); ODA/intervalai su $\\\\cup$/$\\\\cap$; kombinuotos sąlygos.
 };
 
 export function selectModel(grade: number): string {
@@ -153,7 +153,7 @@ function buildDifficultyDescription(difficulty: string, grade: number): string {
       return \`Sunkios (\${grade} kl.): 3–4 loginiai žingsniai; kombinuoti dydžius (geometrija — ne duoti visų kraštinių; procentai/trupmenos — ne vienas veiksmas). Draudžiama: vienas skaičiavimas, algebrinės lygtys su x.\`;
     }
     if (grade <= 8) {
-      return \`Sunkios (\${grade} kl.): ≥3–4 žingsniai, kelios taisyklės (lygčių sistemos, Pitagoras+algebra).\`;
+      return \`Sunkios (\${grade} kl.): ≥3–4 žingsniai, kelios taisyklės.\`;
     }
     return difficultyDescriptions["sunkios"];
   }

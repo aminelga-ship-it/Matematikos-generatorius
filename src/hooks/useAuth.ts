@@ -9,9 +9,14 @@ export interface Profile {
   id: string;
   email: string | null;
   full_name: string | null;
-  plan: 'free' | 'pro';
+  plan: 'free' | 'pro' | 'unlimited';
   used_requests: number;
   used_tasks: number;
+  requests_today?: number;
+  usage_day?: string | null;
+  requests_month?: number;
+  tasks_month?: number;
+  usage_month?: string | null;
   role: UserRole | null;
 }
 
