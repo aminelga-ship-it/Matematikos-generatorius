@@ -120,6 +120,8 @@ export interface Task {
   diagram_config?: DiagramConfig;
   function_equation?: string;
   bank_item_id?: string;
+  /** AI patikros rekomendacijos (10 kl. pilotas) */
+  ai_review_notes?: string;
 }
 
 /** Ar bent vienoje užduotyje yra sugeneruotas sprendimas */

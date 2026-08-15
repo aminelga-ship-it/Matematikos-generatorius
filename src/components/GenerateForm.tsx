@@ -32,7 +32,6 @@ interface GenerateFormProps {
   onSubtopicIdsChange: (ids: string[]) => void;
   selectedTopicIds: string[];
   onTopicIdsChange: (ids: string[]) => void;
-  onTopicSlugsChange?: (slugs: string[]) => void;
 }
 
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
@@ -151,7 +150,6 @@ export function GenerateForm({
   onSubtopicIdsChange,
   selectedTopicIds,
   onTopicIdsChange,
-  onTopicSlugsChange,
 }: GenerateFormProps) {
   const grades = Array.from({ length: 12 }, (_, i) => i + 1);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -432,7 +430,6 @@ export function GenerateForm({
             selectedTopicIds={selectedTopicIds}
             onSubtopicIdsChange={onSubtopicIdsChange}
             onTopicIdsChange={onTopicIdsChange}
-            onTopicSlugsChange={onTopicSlugsChange}
           />
         </div>
       ) : (

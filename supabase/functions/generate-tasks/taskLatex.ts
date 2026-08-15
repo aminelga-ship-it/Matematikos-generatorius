@@ -33,7 +33,8 @@ export function normalizeUnitSuperscripts(text: string): string {
 }
 
 function fixLatex(text: string): string {
-  return text
+  return normalizeInequalitySystems(
+    text
     .replace(/\u000C([a-zA-Z]+)/g, "\\f$1")
     .replace(/\u0008([a-zA-Z]+)/g, "\\b$1")
     .replace(/\u0009(ext\{)/g, "\\text{")
@@ -41,12 +42,96 @@ function fixLatex(text: string): string {
     .replace(/\u0009(imes\b)/g, "\\times")
     .replace(/\u0009(an(?:h)?\b)/g, "\\t$1")
     .replace(/\u0009(o\b)/g, "\\to")
-    // Double-escaped LaTeX commands (\\frac), not line breaks (\\ before space/newline)
-    .replace(/\\\\([a-zA-Z]+)/g, "\\$1")
+    // Double-escaped LaTeX commands (\\frac), not line breaks (\\ before variable)
+    .replace(/\\\\([a-zA-Z]{2,})/g, "\\$1")
     .replace(/\\\\,/g, "\\,")
     .replace(/\\\\!/g, "\\!")
     .replace(/\\\\;/g, "\\;")
-    .replace(/\\\\:/g, "\\:");
+    .replace(/\\\\:/g, "\\:"),
+  );
+}
+
+function fixStrayVariableBackslash(s: string): string {
+  return s.replace(/\\([a-zA-Z])(?=[\^0-9(])/g, "$1");
+}
+
+function cleanInequalityPart(part: string): string {
+  return fixStrayVariableBackslash(
+    part
+      .replace(/^(?:\\left\s*)?\\?\{\s*/, "")
+      .replace(/\\right\s*\.?\s*$/, "")
+      .replace(/^\{\s*/, "")
+      .replace(/^\\\s+/, "")
+      .replace(/\.\s*$/, "")
+      .trim(),
+  );
+}
+
+function splitSystemInequalities(inner: string): string[] {
+  let s = inner
+    .replace(/\\left\s*\{/g, "")
+    .replace(/\\right\s*\.?/g, "")
+    .replace(/^(?:\\left\s*)?\\?\{\s*/, "")
+    .trim();
+  s = s.replace(/\.\s*$/, "");
+  const parts = s.split(/\s*,\s*(?:\\\\|\\\s+)?/);
+  return parts
+    .map((p) => cleanInequalityPart(p))
+    .filter((p) => p.length > 0 && /(?:>|<|\\le|\\ge|\\leq|\\geq)/.test(p));
+}
+
+function repairCasesBody(body: string): string {
+  let b = fixStrayVariableBackslash(body.trim());
+  b = b.replace(/\.\s*$/, "").trim();
+  if (!/\\\\/.test(b)) {
+    const parts = splitSystemInequalities(b);
+    if (parts.length >= 2) return parts.join(" \\\\ ");
+  }
+  return b;
+}
+
+function normalizeCasesMath(inner: string): string {
+  const trimmed = inner.trim();
+  if (/\\begin\{cases\}/.test(trimmed)) {
+    return trimmed.replace(
+      /\\begin\{cases\}([\s\S]*?)\\end\{cases\}/g,
+      (_, body: string) => `\\begin{cases} ${repairCasesBody(body)} \\end{cases}`,
+    );
+  }
+  const parts = splitSystemInequalities(trimmed);
+  if (parts.length >= 2) {
+    return `\\begin{cases} ${parts.join(" \\\\ ")} \\end{cases}`;
+  }
+  return trimmed;
+}
+
+function normalizeInequalitySystems(text: string): string {
+  let s = text.replace(/\$\$([\s\S]+?)\$\$/g, (match, inner: string) => {
+    const norm = normalizeCasesMath(inner);
+    return norm !== inner.trim() ? `$$${norm}$$` : match;
+  });
+
+  s = s.replace(/(?<!\$)\$([^$\n]+)\$(?!\$)/g, (match, inner: string) => {
+    const norm = normalizeCasesMath(inner);
+    return norm !== inner.trim() ? `$${norm}$` : match;
+  });
+
+  const re = /(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)/g;
+  const parts = s.split(re);
+  s = parts
+    .map((part) => {
+      if (part.startsWith("$")) return part;
+      return part.replace(
+        /(?:\\left\s*)?\\?\{\s*([^$\n]+?(?:>|<|\\le|\\ge|\\leq|\\geq)[^$\n]*?,\s*\\?\s*[^$\n]+?(?:>|<|\\le|\\ge|\\leq|\\geq)[^$\n]*?)\.?(?=\s|$|[,.;:!?])/g,
+        (match, inner: string) => {
+          const norm = normalizeCasesMath(inner);
+          return norm !== inner.trim() ? `$$${norm}$$` : match;
+        },
+      );
+    })
+    .join("");
+
+  return s;
 }
 
 /** 1–4 kl.: answer — tik skaičius; be kampo/stulpelio/\\frac answer lauke. */

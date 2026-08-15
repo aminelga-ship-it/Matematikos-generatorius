@@ -9,6 +9,7 @@ import { IVAIRUS_MIN_TASKS, isMixedDifficulty, splitIvairusTaskCounts, splitMixe
 import { assertLoggedInWithinLimits, incrementLoggedInUsage, type ProfileUsage } from "./profileUsage.ts";
 import { buildSavarankiskasTopicPrompt } from "./savarankiskas.ts";
 import { solveTaskViaOpenAI } from "./solveTask.ts";
+import { reviewTaskViaOpenAI } from "./reviewTask.ts";
 import { fixTaskLatex, type Task } from "./taskLatex.ts";
 
 const corsHeaders = {
@@ -18,7 +19,7 @@ const corsHeaders = {
 };
 
 interface TaskRequest {
-  action?: "solve";
+  action?: "solve" | "review";
   grade: number;
   taskCount: number;
   prompt: string;
@@ -112,6 +113,56 @@ Deno.serve(async (req: Request) => {
     const userPlan = userProfile.plan ?? "free";
     const isAdmin = userProfile.role === "admin";
     const skipUsageCount = isAdmin || userPlan === "unlimited";
+
+    if (action === "review") {
+      if (!grade || grade < 1 || grade > 12) {
+        return new Response(
+          JSON.stringify({ error: "Netinkama klasė." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      const q = typeof solveQuestion === "string" ? solveQuestion.trim() : "";
+      if (!q) {
+        return new Response(
+          JSON.stringify({ error: "Nenurodytas uždavinys." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const openaiKey = Deno.env.get("OPENAI_API_KEY");
+      if (!openaiKey) {
+        return new Response(
+          JSON.stringify({ error: "OpenAI API raktas nesukonfigūruotas." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const reviewResult = await reviewTaskViaOpenAI({
+        openaiKey,
+        grade,
+        difficulty: difficulty ?? "vidutinės",
+        question: q,
+        supabaseAdmin,
+        topicIds: Array.isArray(topicIds) ? topicIds : [],
+        subtopicIds: Array.isArray(subtopicIds) ? subtopicIds : [],
+      });
+      if ("error" in reviewResult) {
+        return new Response(
+          JSON.stringify({ error: reviewResult.error }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          question: reviewResult.question,
+          answer: reviewResult.answer,
+          changed: reviewResult.changed,
+          recommendations: reviewResult.recommendations,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     if (action === "solve") {
       if (!grade || grade < 1 || grade > 12) {

@@ -170,6 +170,60 @@ export async function solveTaskAnswer(grade: number, question: string): Promise<
   return data.answer;
 }
 
+export interface TaskReviewResult {
+  question: string;
+  answer: string;
+  changed: boolean;
+  recommendations: string;
+}
+
+export async function reviewTaskQuestion(
+  grade: number,
+  difficulty: Difficulty,
+  question: string,
+  topicIds?: string[],
+  subtopicIds?: string[],
+): Promise<TaskReviewResult> {
+  const token = await getAccessToken();
+
+  const response = await fetch(GENERATE_TASKS_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      apikey: SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({
+      action: "review",
+      grade,
+      taskCount: 1,
+      prompt: "",
+      difficulty,
+      question,
+      topicIds,
+      subtopicIds,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || data.error) {
+    throw new Error(data.error ?? `Klaida: ${response.status}`);
+  }
+
+  if (typeof data.question !== "string" || !data.question.trim()) {
+    throw new Error("Nepavyko gauti patikrintos užduoties.");
+  }
+
+  return {
+    question: data.question.trim(),
+    answer: typeof data.answer === "string" ? data.answer.trim() : "",
+    changed: data.changed === true,
+    recommendations:
+      typeof data.recommendations === "string" ? data.recommendations.trim() : "",
+  };
+}
+
 export async function saveSession(
   grade: number,
   taskCount: number,

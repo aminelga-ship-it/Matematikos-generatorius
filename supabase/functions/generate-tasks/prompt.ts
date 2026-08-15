@@ -79,7 +79,10 @@ export function selectModel(
   }
 
   if (grade <= 10) {
-    if (tier === "lengvos") return "gpt-4o";
+    if (tier === "lengvos") return "gpt-4.1";
+    if (grade >= 9 && (tier === "vidutinės" || tier === "sunkios" || tier === "mixed")) {
+      return "gpt-5.4";
+    }
     return "gpt-5.4";
   }
 

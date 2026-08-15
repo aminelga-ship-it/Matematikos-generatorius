@@ -9,7 +9,6 @@ interface SavarankiskasTopicPickerProps {
   selectedTopicIds: string[];
   onSubtopicIdsChange: (ids: string[]) => void;
   onTopicIdsChange: (ids: string[]) => void;
-  onTopicSlugsChange?: (slugs: string[]) => void;
 }
 
 export function SavarankiskasTopicPicker({
@@ -18,7 +17,6 @@ export function SavarankiskasTopicPicker({
   selectedTopicIds,
   onSubtopicIdsChange,
   onTopicIdsChange,
-  onTopicSlugsChange,
 }: SavarankiskasTopicPickerProps) {
   const [topics, setTopics] = useState<CurriculumTopic[]>([]);
   const [subtopics, setSubtopics] = useState<CurriculumSubtopic[]>([]);
@@ -62,22 +60,6 @@ export function SavarankiskasTopicPicker({
     }
     return map;
   }, [subtopics]);
-
-  useEffect(() => {
-    if (!onTopicSlugsChange) return;
-    const slugSet = new Set<string>();
-    for (const id of selectedTopicIds) {
-      const topic = topics.find((t) => t.id === id);
-      if (topic?.slug) slugSet.add(topic.slug);
-    }
-    for (const stId of selectedSubtopicIds) {
-      const st = subtopics.find((s) => s.id === stId);
-      if (!st) continue;
-      const topic = topics.find((t) => t.id === st.topic_id);
-      if (topic?.slug) slugSet.add(topic.slug);
-    }
-    onTopicSlugsChange([...slugSet]);
-  }, [selectedTopicIds, selectedSubtopicIds, topics, subtopics, onTopicSlugsChange]);
 
   const toggleSubtopic = (id: string) => {
     if (selectedSubtopicIds.includes(id)) {

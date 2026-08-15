@@ -1,4 +1,3 @@
-
 import {
   Eye, EyeOff, BookOpen, BookX, Printer, ArrowLeft, GraduationCap,
   FileType2, Lock, AlertCircle,
@@ -27,9 +26,11 @@ interface TasksViewProps {
   topicIds?: string[];
   subtopicIds?: string[];
   sourceHint?: string;
-  generateAnswerMode?: boolean;
+  grade10PilotMode?: boolean;
   generatingAnswerIndex?: number | null;
+  reviewingTaskIndex?: number | null;
   onGenerateAnswer?: (index: number, question: string) => void;
+  onReviewTask?: (index: number, question: string) => void;
   error?: string | null;
   proLimitExhausted?: boolean;
   onLimitTopUp?: () => void;
@@ -55,9 +56,11 @@ export function TasksView({
   topicIds,
   subtopicIds,
   sourceHint,
-  generateAnswerMode,
+  grade10PilotMode,
   generatingAnswerIndex,
+  reviewingTaskIndex,
   onGenerateAnswer,
+  onReviewTask,
   onBankFeedback,
   onBankItemLinked,
   error,
@@ -67,7 +70,7 @@ export function TasksView({
   const hasSolutions = tasksIncludeSolutions(tasks);
 
   const hideGlobalAnswersToggle =
-    generateAnswerMode || (grade === 10 && tasks.some((t) => !(t.answer ?? "").trim()));
+    grade10PilotMode || (grade === 10 && tasks.some((t) => !(t.answer ?? "").trim()));
 
   return (
     <div className="space-y-5">
@@ -190,9 +193,11 @@ export function TasksView({
             index={i}
             showAnswers={showAnswers}
             showSolutions={hasSolutions && showSolutions}
-            generateAnswerMode={generateAnswerMode}
+            grade10PilotMode={grade10PilotMode}
             generatingAnswer={generatingAnswerIndex === i}
+            reviewingTask={reviewingTaskIndex === i}
             onGenerateAnswer={onGenerateAnswer}
+            onReviewTask={onReviewTask}
             canEdit={canEdit}
             onEdit={onEditTask}
             showTeacherFeedback={showTeacherFeedback}

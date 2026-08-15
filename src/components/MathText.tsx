@@ -15,7 +15,7 @@ type Segment =
 // display before inline so $$ isn't consumed by $ rule
 function parseSegments(text: string): Segment[] {
   const segments: Segment[] = [];
-  const re = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\$([^$\n]+?)\$|\\\(([\s\S]+?)\\\)/g;
+  const re = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|(?<!\$)\$([^$\n]+?)\$(?!\$)|\\\(([\s\S]+?)\\\)/g;
   let last = 0;
 
   for (const m of text.matchAll(re)) {
@@ -42,6 +42,87 @@ function escapeHtml(s: string): string {
     .replace(/>/g, "&gt;");
 }
 
+/** Išskaido sulaužytą sistemos žymėjimą į nelygybių eilutes. */
+function fixStrayVariableBackslash(s: string): string {
+  return s.replace(/\\([a-zA-Z])(?=[\^0-9(])/g, "$1");
+}
+
+function cleanInequalityPart(part: string): string {
+  return fixStrayVariableBackslash(
+    part
+      .replace(/^(?:\\left\s*)?\\?\{\s*/, "")
+      .replace(/\\right\s*\.?\s*$/, "")
+      .replace(/^\{\s*/, "")
+      .replace(/^\\\s+/, "")
+      .replace(/\.\s*$/, "")
+      .trim(),
+  );
+}
+
+function splitSystemInequalities(inner: string): string[] {
+  let s = inner
+    .replace(/\\left\s*\{/g, "")
+    .replace(/\\right\s*\.?/g, "")
+    .replace(/^(?:\\left\s*)?\\?\{\s*/, "")
+    .trim();
+  s = s.replace(/\.\s*$/, "");
+  const parts = s.split(/\s*,\s*(?:\\\\|\\\s+)?/);
+  return parts
+    .map((p) => cleanInequalityPart(p))
+    .filter((p) => p.length > 0 && /(?:>|<|\\le|\\ge|\\leq|\\geq)/.test(p));
+}
+
+function repairCasesBody(body: string): string {
+  let b = fixStrayVariableBackslash(body.trim());
+  b = b.replace(/\.\s*$/, "").trim();
+  if (!/\\\\/.test(b)) {
+    const parts = splitSystemInequalities(b);
+    if (parts.length >= 2) return parts.join(" \\\\ ");
+  }
+  return b;
+}
+
+function normalizeCasesMath(inner: string): string {
+  const trimmed = inner.trim();
+  if (/\\begin\{cases\}/.test(trimmed)) {
+    return trimmed.replace(
+      /\\begin\{cases\}([\s\S]*?)\\end\{cases\}/g,
+      (_, body: string) => `\\begin{cases} ${repairCasesBody(body)} \\end{cases}`,
+    );
+  }
+  const parts = splitSystemInequalities(trimmed);
+  if (parts.length >= 2) {
+    return `\\begin{cases} ${parts.join(" \\\\ ")} \\end{cases}`;
+  }
+  return trimmed;
+}
+
+/** `{ a \\le 0, \\ b > 0` inline → display `\\begin{cases}`. */
+function normalizeInequalitySystems(text: string): string {
+  let s = text.replace(/\$\$([\s\S]+?)\$\$/g, (match, inner: string) => {
+    const norm = normalizeCasesMath(inner);
+    return norm !== inner.trim() ? `$$${norm}$$` : match;
+  });
+
+  s = s.replace(/(?<!\$)\$([^$\n]+)\$(?!\$)/g, (match, inner: string) => {
+    const norm = normalizeCasesMath(inner);
+    return norm !== inner.trim() ? `$${norm}$` : match;
+  });
+
+  // Sulaužytas sistemos ženklas tik už $…$ ribų
+  s = mapOutsideMathDelimiters(s, (plain) =>
+    plain.replace(
+      /(?:\\left\s*)?\\?\{\s*([^$\n]+?(?:>|<|\\le|\\ge|\\leq|\\geq)[^$\n]*?,\s*\\?\s*[^$\n]+?(?:>|<|\\le|\\ge|\\leq|\\geq)[^$\n]*?)\.?(?=\s|$|[,.;:!?])/g,
+      (match, inner: string) => {
+        const norm = normalizeCasesMath(inner);
+        return norm !== inner.trim() ? `$$${norm}$$` : match;
+      },
+    ),
+  );
+
+  return s;
+}
+
 function renderKatex(latex: string, displayMode: boolean): string {
   const useDisplay =
     displayMode || /\\begin\{(cases|matrix|pmatrix|bmatrix|vmatrix|aligned|array)/.test(latex);
@@ -59,8 +140,9 @@ function renderKatex(latex: string, displayMode: boolean): string {
 }
 
 function normalizeDoubleBackslashes(text: string): string {
+  // Tik dvigubai escape'intos komandos (\\frac), ne eilučių lūžiai cases aplinkoje (\\ x^2).
   return text
-    .replace(/\\\\([a-zA-Z]+)/g, "\\$1")
+    .replace(/\\\\([a-zA-Z]{2,})/g, "\\$1")
     .replace(/\\\\,/g, "\\,")
     .replace(/\\\\!/g, "\\!")
     .replace(/\\\\;/g, "\\;")
@@ -213,11 +295,13 @@ function renderPlainSegment(text: string): React.ReactNode {
 export const MathText: React.FC<MathTextProps> = ({ text, className }) => {
   const nodes = useMemo(() => {
     if (!text) return null;
-    const preprocessed = normalizeLatexDelimiters(
-      repairBrokenEscapes(
-        normalizeDoubleBackslashes(
-          normalizeUnitSuperscripts(
-            mapOutsideMathDelimiters(wrapPercentLiterals(fixSlashFractions(text)), enrichPlainTextMath),
+    const preprocessed = normalizeInequalitySystems(
+      normalizeLatexDelimiters(
+        repairBrokenEscapes(
+          normalizeDoubleBackslashes(
+            normalizeUnitSuperscripts(
+              mapOutsideMathDelimiters(wrapPercentLiterals(fixSlashFractions(text)), enrichPlainTextMath),
+            ),
           ),
         ),
       ),

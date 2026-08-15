@@ -9,8 +9,8 @@ import { PricingPage } from "./components/PricingPage";
 import { GuidePage } from "./components/GuidePage";
 import { AdminBankPage } from "./components/AdminBankPage";
 import { RolePickerModal } from "./components/RolePickerModal";
-import { generateTasks, saveSession, getRecentSessions, loadSession, solveTaskAnswer, ProLimitExhaustedError } from "./lib/api";
-import { selectionSlugsUseGenerateAnswer, resolveTopicSlugsFromSelection } from "./lib/deferredAnswers";
+import { generateTasks, saveSession, getRecentSessions, loadSession, solveTaskAnswer, reviewTaskQuestion, ProLimitExhaustedError } from "./lib/api";
+import { isGrade10Pilot } from "./lib/grade10Pilot";
 import { updateTaskBankItem, createGeneratedTaskBankDraft } from "./lib/bankApi";
 import type { Task, MathSession, Difficulty, GenerationMode, BankDifficulty } from "./lib/types";
 import { usePlan, useUpgradeGate } from './lib/usePlan';
@@ -40,9 +40,8 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [proLimitExhausted, setProLimitExhausted] = useState(false);
   const [generationMeta, setGenerationMeta] = useState<{ bankCount: number; aiCount: number } | null>(null);
-  const [generateAnswerPilot, setGenerateAnswerPilot] = useState(false);
-  const [activeTopicSlugs, setActiveTopicSlugs] = useState<string[]>([]);
   const [generatingAnswerIndex, setGeneratingAnswerIndex] = useState<number | null>(null);
+  const [reviewingTaskIndex, setReviewingTaskIndex] = useState<number | null>(null);
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [showAnswers, setShowAnswers] = useState(false);
   const [showSolutions, setShowSolutions] = useState(false);
@@ -105,19 +104,7 @@ export default function App() {
     });
   }, []);
 
-  const generateAnswerMode =
-    generateAnswerPilot || selectionSlugsUseGenerateAnswer(activeTopicSlugs);
-
-  useEffect(() => {
-    if (!tasks || generationMode !== "topic") return;
-    if (topicIds.length === 0 && subtopicIds.length === 0) return;
-    void resolveTopicSlugsFromSelection(topicIds, subtopicIds).then((slugs) => {
-      setActiveTopicSlugs(slugs);
-      if (selectionSlugsUseGenerateAnswer(slugs)) {
-        setGenerateAnswerPilot(true);
-      }
-    });
-  }, [tasks, generationMode, topicIds, subtopicIds]);
+  const grade10PilotMode = isGrade10Pilot(currentGrade);
 
   const handleGenerate = useCallback(async () => {
     if (!user) {
@@ -150,18 +137,6 @@ export default function App() {
           ? { bankCount: meta.bankCount, aiCount: meta.aiCount }
           : null,
       );
-      if (generationMode === "topic") {
-        const slugs = await resolveTopicSlugsFromSelection(topicIds, subtopicIds);
-        setActiveTopicSlugs(slugs);
-        const pilot =
-          meta?.deferredAnswers === true ||
-          selectionSlugsUseGenerateAnswer(slugs) ||
-          (grade === 10 && (topicIds.length > 0 || subtopicIds.length > 0));
-        setGenerateAnswerPilot(pilot);
-      } else {
-        setActiveTopicSlugs([]);
-        setGenerateAnswerPilot(false);
-      }
       setCurrentGrade(grade);
       setShowAnswers(false);
       setShowSolutions(false);
@@ -224,16 +199,6 @@ export default function App() {
     setTopicIds(session.topic_ids ?? []);
     setSubtopicIds(session.subtopic_ids ?? []);
     setCurrentGrade(session.grade);
-    const sessionSlugs = await resolveTopicSlugsFromSelection(
-      session.topic_ids ?? [],
-      session.subtopic_ids ?? [],
-    );
-    setActiveTopicSlugs(sessionSlugs);
-    setGenerateAnswerPilot(
-      selectionSlugsUseGenerateAnswer(sessionSlugs) ||
-        (session.grade === 10 &&
-          ((session.topic_ids?.length ?? 0) > 0 || (session.subtopic_ids?.length ?? 0) > 0)),
-    );
     setShowAnswers(false);
     setShowSolutions(false);
   }, []);
@@ -241,9 +206,8 @@ export default function App() {
   const handleReset = useCallback(() => {
     setTasks(null);
     setGenerationMeta(null);
-    setGenerateAnswerPilot(false);
-    setActiveTopicSlugs([]);
     setGeneratingAnswerIndex(null);
+    setReviewingTaskIndex(null);
     setError(null);
     setSubtopicIds([]);
     setTopicIds([]);
@@ -279,6 +243,47 @@ export default function App() {
       setGeneratingAnswerIndex(null);
     }
   }, [currentGrade, refetchProfile]);
+
+  const handleReviewTask = useCallback(async (index: number, question: string) => {
+    const trimmed = question.trim();
+    if (!trimmed) {
+      setError("Užduoties tekstas tuščias — negalima patikrinti.");
+      return;
+    }
+    setReviewingTaskIndex(index);
+    setError(null);
+    try {
+      const result = await reviewTaskQuestion(
+        currentGrade,
+        difficulty,
+        trimmed,
+        generationMode === "topic" ? topicIds : undefined,
+        generationMode === "topic" ? subtopicIds : undefined,
+      );
+      setTasks((prev) => {
+        if (!prev) return prev;
+        const next = [...prev];
+        const t = next[index];
+        if (!t) return prev;
+        next[index] = {
+          ...t,
+          question: result.question,
+          ai_review_notes: result.recommendations,
+          ...(result.answer
+            ? { answer: result.answer }
+            : result.changed
+              ? { answer: "" }
+              : {}),
+        };
+        return next;
+      });
+    } catch (err) {
+      setProLimitExhausted(false);
+      setError(err instanceof Error ? err.message : "Nepavyko patikrinti užduoties.");
+    } finally {
+      setReviewingTaskIndex(null);
+    }
+  }, [currentGrade, difficulty, generationMode, topicIds, subtopicIds]);
 
   const handleBankFeedback = useCallback((index: number, result: "approved" | "draft" | "deleted") => {
     if (result === "deleted") {
@@ -387,15 +392,17 @@ export default function App() {
             topicIds={generationMode === "topic" ? topicIds : undefined}
             subtopicIds={generationMode === "topic" ? subtopicIds : undefined}
             sourceHint={
-              generateAnswerMode
-                ? "Atsakymą generuokite mygtuku „Generuoti atsakymą“ po kiekviena užduotimi (1 generavimo užduotis)."
+              grade10PilotMode
+                ? "10 kl. pilotas: „Patikrinti užduotį“ (nemokama) ir „Generuoti atsakymą“ (1 generavimo užduotis) po kiekviena užduotimi."
                 : showGenerationSourceHint() && generationMeta
                   ? `${generationMeta.bankCount} užduotys iš patvirtinto banko, ${generationMeta.aiCount} sugeneruota AI`
                   : undefined
             }
-            generateAnswerMode={generateAnswerMode}
+            grade10PilotMode={grade10PilotMode}
             generatingAnswerIndex={generatingAnswerIndex}
+            reviewingTaskIndex={reviewingTaskIndex}
             onGenerateAnswer={handleGenerateAnswer}
+            onReviewTask={handleReviewTask}
             onBankFeedback={handleBankFeedback}
             onBankItemLinked={handleBankItemLinked}
             error={error}
@@ -455,7 +462,7 @@ export default function App() {
                   setGrade(v);
                   setSubtopicIds([]);
                   setTopicIds([]);
-                  setActiveTopicSlugs([]);
+                  if (v !== 10) setShowAnswers(false);
                   if (v > 6) setWithDiagram(false);
                   if (v < 9) setWithGraph(false);
                 }}
@@ -483,7 +490,6 @@ export default function App() {
                 onSubtopicIdsChange={setSubtopicIds}
                 selectedTopicIds={topicIds}
                 onTopicIdsChange={setTopicIds}
-                onTopicSlugsChange={setActiveTopicSlugs}
               />
             </div>
 

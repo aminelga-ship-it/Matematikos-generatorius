@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, CheckCircle, BookOpen, Pencil, Check, X, Sparkles, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, CheckCircle, BookOpen, Pencil, Check, X, Sparkles, Loader2, ClipboardCheck } from "lucide-react";
 import { MathText } from "./MathText";
 import { GeometryVisualizer } from "./GeometryVisualizer";
 import { GeoGebraGraph } from './GeoGebraGraph';
@@ -12,9 +12,11 @@ interface TaskCardProps {
   index: number;
   showAnswers: boolean;
   showSolutions: boolean;
-  generateAnswerMode?: boolean;
+  grade10PilotMode?: boolean;
   generatingAnswer?: boolean;
+  reviewingTask?: boolean;
   onGenerateAnswer?: (index: number, question: string) => void;
+  onReviewTask?: (index: number, question: string) => void;
   canEdit?: boolean;
   onEdit?: (index: number, updated: Task) => void;
   showTeacherFeedback?: boolean;
@@ -105,7 +107,7 @@ const CARD_ACCENT_COLORS = [
   "border-l-indigo-500",
 ];
 
-export function TaskCard({ task, index, showAnswers, showSolutions, generateAnswerMode, generatingAnswer, onGenerateAnswer, canEdit, onEdit, showTeacherFeedback, grade, sessionDifficulty, topicIds, subtopicIds, onBankFeedback, onBankItemLinked }: TaskCardProps) {
+export function TaskCard({ task, index, showAnswers, showSolutions, grade10PilotMode, generatingAnswer, reviewingTask, onGenerateAnswer, onReviewTask, canEdit, onEdit, showTeacherFeedback, grade, sessionDifficulty, topicIds, subtopicIds, onBankFeedback, onBankItemLinked }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draftQuestion, setDraftQuestion] = useState(task.question);
@@ -113,13 +115,17 @@ export function TaskCard({ task, index, showAnswers, showSolutions, generateAnsw
   const [draftDiagramRemoved, setDraftDiagramRemoved] = useState(false);
 
   const hasAnswerText = (task.answer ?? "").trim().length > 0;
+  const hasReviewNotes = (task.ai_review_notes ?? "").trim().length > 0;
   const showAnswerBlock =
-    !editing && hasAnswerText && (generateAnswerMode || showAnswers);
+    !editing && hasAnswerText && (grade10PilotMode || showAnswers);
   const showGenerateButton =
     !editing &&
+    grade10PilotMode &&
     !hasAnswerText &&
-    onGenerateAnswer &&
-    (generateAnswerMode || grade === 10);
+    onGenerateAnswer;
+  const showReviewButton =
+    !editing && grade10PilotMode && onReviewTask;
+  const aiBusy = generatingAnswer || reviewingTask;
 
   const hasGraph = Boolean(task.function_equation && task.function_equation.trim() !== "");
   const hasDiagram = Boolean(task.diagram_config && !draftDiagramRemoved);
@@ -329,23 +335,62 @@ export function TaskCard({ task, index, showAnswers, showSolutions, generateAnsw
         )}
       </div>
 
-      {/* Generate answer (pilot: 10 kl. racionaliosios lygtys) */}
-      {showGenerateButton && (
-        <div className="mx-6 mb-4">
-          <button
-            type="button"
-            onClick={() => onGenerateAnswer?.(index, task.question.trim() || displayQuestion)}
-            disabled={generatingAnswer}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100 transition disabled:opacity-60"
-          >
-            {generatingAnswer ? (
-              <Loader2 size={15} className="animate-spin" />
-            ) : (
-              <Sparkles size={15} />
+      {/* 10 kl. pilotas: patikra + atsakymas */}
+      {(showReviewButton || showGenerateButton) && (
+        <div className="mx-6 mb-4 space-y-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-start">
+            {showReviewButton && (
+              <div className="flex-1 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => onReviewTask?.(index, task.question.trim() || displayQuestion)}
+                  disabled={aiBusy}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100 transition disabled:opacity-60 w-full sm:w-auto"
+                >
+                  {reviewingTask ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <ClipboardCheck size={15} />
+                  )}
+                  {reviewingTask ? "Tikrinama…" : "Patikrinti užduotį"}
+                </button>
+                <p className="text-[11px] text-slate-400 mt-1.5">
+                  AI patikrina sugeneruotą užduotį ir jei reikia pataiso.
+                </p>
+              </div>
             )}
-            {generatingAnswer ? "Generuojama…" : "Generuoti atsakymą"}
-          </button>
-          <p className="text-[11px] text-slate-400 mt-1.5">Skaičiuojama kaip 1 generavimo užduotis.</p>
+            {showGenerateButton && (
+              <div className="flex-1 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => onGenerateAnswer?.(index, task.question.trim() || displayQuestion)}
+                  disabled={aiBusy}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100 transition disabled:opacity-60 w-full sm:w-auto"
+                >
+                  {generatingAnswer ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <Sparkles size={15} />
+                  )}
+                  {generatingAnswer ? "Generuojama…" : "Generuoti atsakymą"}
+                </button>
+                <p className="text-[11px] text-slate-400 mt-1.5">
+                  Skaičiuojama kaip 1 generavimo užduotis.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {hasReviewNotes && (
+            <div className="px-4 py-3 bg-sky-50 rounded-xl border border-sky-100">
+              <span className="text-[10px] font-bold text-sky-600 uppercase tracking-widest block leading-none mb-1.5">
+                AI rekomendacijos
+              </span>
+              <p className="text-sm text-sky-900 leading-relaxed">
+                <MathText text={task.ai_review_notes ?? ""} />
+              </p>
+            </div>
+          )}
         </div>
       )}
 

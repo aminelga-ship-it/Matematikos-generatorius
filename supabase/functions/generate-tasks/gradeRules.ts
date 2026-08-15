@@ -733,9 +733,9 @@ export const GRADE_10_RULES = {
       ],
     },
     {
-      title: "Lygčių sistemos",
+      title: "Lygčių sistemos, kurių tik viena lygtis tiesinė",
       skills: [
-        "Spręsti lygčių sistemas, kai viena lygtis tiesinė, kita kvadratinė arba racionalioji",
+        "Spręsti lygčių sistemas, kai viena lygtis tiesinė, kita kvadratinė arba racionalioji (trupmeninė)",
         "Sudaryti sistemas iš tekstinių uždavinių",
       ],
     },
@@ -749,7 +749,7 @@ export const GRADE_10_RULES = {
     {
       title: "Panašios figūros",
       theory: [
-        "Panašieji trikampiai",
+        "Trikampio panašumo požymiai",
         "Panašiųjų trikampių perimetrai ir plotai",
         "Pusiaukraštinių savybės",
         "Pusiaukampinių savybės",
