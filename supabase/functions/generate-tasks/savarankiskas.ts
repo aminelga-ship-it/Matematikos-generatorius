@@ -5,6 +5,10 @@ export type TopicPromptResult = {
   prompt: string;
   /** Potemės aprašas — system prompt be visos klasės programos */
   subtopicGuided: boolean;
+  /** AI negeneruoja answer (pvz. trupmeniniai reiškiniai) */
+  omitAnswers: boolean;
+  /** Atsakymas gaunamas atskira „Rodyti atsakymą“ užklausa */
+  deferredAnswers: boolean;
 };
 
 /** User prompt AI generacijai pagal pasirinktą curriculum (režimas „pagal temą“). */
@@ -42,18 +46,22 @@ export async function buildSavarankiskasTopicPrompt(
         "Vartotojas nepasirinko konkrečios temos — laikykis bendros klasės programos.",
       ].join("\n\n"),
       subtopicGuided: false,
+      omitAnswers: false,
+      deferredAnswers: false,
     };
   }
 
   const { data: topics } = await supabaseAdmin
     .from("curriculum_topics")
-    .select("id, title")
+    .select("id, title, slug")
     .in("id", scopedTopicIds);
 
   const topicTitleById = new Map<string, string>();
+  const topicSlugById = new Map<string, string>();
   for (const row of topics ?? []) {
-    const t = row as { id: string; title: string };
+    const t = row as { id: string; title: string; slug: string };
     topicTitleById.set(t.id, t.title);
+    topicSlugById.set(t.id, t.slug);
   }
 
   const { data: allSubsForTopics } = await supabaseAdmin
@@ -72,7 +80,10 @@ export async function buildSavarankiskasTopicPrompt(
 
   const selectedSubIdSet = new Set(subtopicIds);
   const focusParts: string[] = [];
-  const selectedSlugs: string[] = selectedSubRows.map((s) => s.slug);
+  const selectedSubtopicRefs = selectedSubRows.map((s) => ({
+    slug: s.slug,
+    topicSlug: topicSlugById.get(s.topic_id) ?? "",
+  }));
 
   for (const topicId of scopedTopicIds) {
     const topicTitle = topicTitleById.get(topicId) ?? "Tema";
@@ -104,10 +115,24 @@ export async function buildSavarankiskasTopicPrompt(
       ? `Įvairaus sudėtingumo — generuok ${taskCount} užduotis.`
       : `Generuok ${taskCount} užduotis.`;
 
-  const { text: subtopicBlock, guided } = buildSubtopicPromptBlock(
+  const topicSlugsForPrompts = new Set<string>();
+  for (const topicId of scopedTopicIds) {
+    const topicSlug = topicSlugById.get(topicId);
+    if (!topicSlug) continue;
+    const topicSubs = subsByTopic.get(topicId) ?? [];
+    const topicOnly = topicIds.includes(topicId) &&
+      !topicSubs.some((s) => selectedSubIdSet.has(s.id));
+    const hasSelectedSub = topicSubs.some((s) => selectedSubIdSet.has(s.id));
+    if (topicOnly || hasSelectedSub) {
+      topicSlugsForPrompts.add(topicSlug);
+    }
+  }
+
+  const { text: subtopicBlock, guided, omitAnswers, deferredAnswers } = buildSubtopicPromptBlock(
     grade,
-    selectedSlugs,
+    selectedSubtopicRefs,
     difficulty,
+    [...topicSlugsForPrompts],
   );
 
   if (guided) {
@@ -119,6 +144,8 @@ export async function buildSavarankiskasTopicPrompt(
         `Fokusas (tik šios potemės): ${focusLine}. Įvairink uždavinius, vengk kopijų.`,
       ].join("\n\n"),
       subtopicGuided: true,
+      omitAnswers,
+      deferredAnswers,
     };
   }
 
@@ -129,5 +156,7 @@ export async function buildSavarankiskasTopicPrompt(
       `Fokusas — generuok tik iš: ${focusLine}. Įvairink uždavinius, vengk kopijų.`,
     ].join("\n\n"),
     subtopicGuided: false,
+    omitAnswers,
+    deferredAnswers,
   };
 }

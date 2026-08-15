@@ -342,11 +342,10 @@ export const GRADE_8_RULES = {
       id: "8-saknys",
       title: "Šaknys",
       theory: [
-        "Kvadratinė šaknis; šaknis ir kvadratas — priešingi veiksmai",
+        "Kvadratinės ir kubinės šaknies traukimas; šaknis ir kvadratas/kubas — priešingi veiksmai",
         "Šaknų savybės (√a·√b, √(a/b), kėlimas laipsniu su sveiku rodikliu)",
-        "Iracionalieji skaičiai; šaknies traukimas išskaidant dauginamaisiais",
-        "Kubinė šaknis (kubo lentelė, tos pačios savybės kaip kvadratinei)",
-        "Veiksmai su šaknimis: sudėtis/atimtis (panašieji), daugyba, šaknis iš trupmenos",
+        "Iracionaliųjų skaičių atpažinimas, įvertinimas ir palyginimas",
+        "Veiksmai su šaknimis: panašiųjų šaknų sudėtis/atimtis, daugyba, šaknis iš trupmenų ir mišriųjų skaičių",
         "Įkėlimas į šaknį ir iškėlimas",
       ],
       skills: [
@@ -354,20 +353,24 @@ export const GRADE_8_RULES = {
         "Lygininti ir skaičiuoti su iracionaliaisiais skaičiais",
         "Prastinti skaitinius ir raidinius reiškinius su šaknimis",
       ],
+      instruction:
+        "DRAUDŽIAMA (ypač lengvam lygiui): iracionaliosios lygtys; apibrėžimo sritis (ODZ). Šaknis rašyk LaTeX ($\\sqrt{64}$), ne žodžiais („kvadratinę šaknį iš …“).",
     },
     {
-      id: "8-vektoriai",
-      title: "Vektoriai",
+      id: "8-vektoriai-geometrijoje",
+      title: "Vektoriai geometrijoje",
       theory: [
         "Vektoriaus ilgis ir kryptis; lygūs ir priešingi vektoriai",
-        "Vektorių sudėtis ir atimtis (trikampio taisyklė)",
+        "Geometrinė vektorių sudėtis ir atimtis (trikampio taisyklė)",
         "Vektoriaus daugyba iš skaičiaus (ilgio ir krypties keitimas)",
       ],
       skills: [
-        "Braižyti ir užrašyti vektorius",
+        "Braižyti ir užrašyti vektorius schemoje",
         "Atlikti sudėtį, atimtį ir daugybą iš skaičiaus",
-        "Spręsti paprastus uždavinius koordinatėse arba schemoje",
+        "Spręsti paprastus uždavinius schemoje",
       ],
+      instruction:
+        "NENAUDOTI vektorių koordinačių, skaliarinės sandaugos ar koordinačių plokštumos formulių.",
     },
     {
       id: "8-finansiniai-skaiciavimai",
@@ -405,15 +408,15 @@ export const GRADE_8_RULES = {
         "Jei užduotis apie skaidymą 4 narių reiškiniu — tai grupavimo būdas (dvi poros + bendras skliaustas), ne kvadratinis trinarys.",
     },
     {
-      id: "8-geometrija",
-      title: "Geometrija",
+      id: "8-planimetrija",
+      title: "Planimetrija",
       theory: [
-        "Pitagoro teorema ir atvirkštinė (statumo nustatymas)",
+        "Pitagoro teorema ir jos taikymas; atvirkštinė (statumo nustatymas)",
         "Atstumas tarp taškų tiesėje ir plokštumoje",
         "Statinis prieš 30° kampą (pusė įžambinės); 45° ir 60° trikampiai",
-        "Lygiašonis ir lygiakraštis trikampis",
+        "Lygiašonio ir lygiakraščio trikampio savybės",
         "Trikampio ir trapecijos vidurio linija",
-        "Perimetrai ir plotai (2D)",
+        "Įvairių figūrų elementų ilgių bei plotų skaičiavimas",
       ],
       skills: [
         "Rasti kraštines, aukštines ir atstumus",
@@ -437,10 +440,10 @@ export const GRADE_8_RULES = {
     },
     {
       id: "8-lygciu-sistemos",
-      title: "Lygčių sistemos",
+      title: "Tiesinės lygčių sistemos",
       theory: [
-        "Lygtis su dviem nežinomaisiais",
-        "Sprendinio tikrinimas (įstatymas į x ir y)",
+        "Lygtis su dviem nežinomaisiais; kelios sprendinių poros $(x,y)$",
+        "Sistemos sprendinių tikrinimas (įstatymas į $x$ ir $y$)",
         "Keitimo, sudėties, sulyginimo būdai",
         "Grafinis sprendimas koordinačių plokštumoje",
         "Tekstiniai uždaviniai (judėjimas, kainos ir pan.)",
@@ -452,8 +455,8 @@ export const GRADE_8_RULES = {
       ],
     },
     {
-      id: "8-stereometrija-3d",
-      title: "Stereometrija (3D)",
+      id: "8-erdvinu-figuru-pavirsiaus-plotai-ir-turiai",
+      title: "Erdvinių figūrų paviršiaus plotai ir tūriai",
       theory: [
         "Stačioji prizmė ir taisyklingoji piramidė (plotas, tūris)",
         "Ritinys ir kūgis",
@@ -475,6 +478,7 @@ export const GRADE_8_RULES = {
   ],
   forbidden: [
     "Kvadratinės lygtys",
+    "Iracionaliosios lygtys ir apibrėžimo sritis (ODZ) šaknų užduotyse — ypač lengvam lygiui",
     "Kvadratinio trinario skaidymas dauginamaisiais ($x^2+bx+c$, $ax^2+bx+c$) — tai 9 kl.",
     "Modulis: $|x|$, $|x-a|$, $|…|$ bet kurioje užduotyje (7 kl. modulis 8 kl. nekartoti)",
     "Mišrios sistemos (tiesinė + kvadratinė)",
@@ -495,7 +499,7 @@ export const GRADE_8_RULES = {
   ],
   difficulty: {
     lengvas: {
-      must: "Viena aiški 8 kl. taisyklė; 1–2 veiksmai; tipinis vadovėlio lygis (originalumas NEREIKALINGAS).",
+      must: "Viena aiški 8 kl. taisyklė; 1–2 veiksmai; tipinis vadovėlio lygis (originalumas NEREIKALINGAS). Šaknų temoje — ne iracionaliosios lygtys ir ne ODZ.",
       reject_if:
         "Daugiau nei 2 loginiai žingsniai, kelių temų derinys, arba reikia strategijos — tai jau vidutinis/sunkus.",
       originality: "Nenaudok „kūrybingumo“ reikalavimo — gali būti standartinis pavyzdys.",
@@ -578,7 +582,7 @@ export function buildGrade8Section(): string {
   const grouping =
     reisk && "instruction" in reisk && reisk.instruction ? ` Reiškinių skaidymas: ${reisk.instruction}` : "";
   const forbid = r.forbidden.join("; ");
-  return `8 KL. programos temos: ${topicLine}. Šaknys: savybės, išskaidymas, kvadratinė/kubinė. Sistemos: tik 2 tiesinės lygtys su x,y. Geometrija: Pitagoras, 30°/45°/60°, vidurio linija; 3D — prizmė, piramidė, ritinys, kūgis, rutulys. Finansai: paprast./sudėt. palūkanos.${grouping} DRAUDŽIAMA (visada): ${forbid}.`;
+  return `8 KL. programos temos: ${topicLine}. Šaknys: savybės, išskaidymas, kvadratinė/kubinė — be iracionalių lygčių ir ODZ (ypač lengvoms). Sistemos: tik 2 tiesinės lygtys su x,y. Planimetrija: Pitagoras, 30°/45°/60°, vidurio linija; 3D — prizmė, piramidė, ritinys, kūgis, rutulys. Finansai: paprast./sudėt. palūkanos.${grouping} DRAUDŽIAMA (visada): ${forbid}.`;
 }
 
 export const GRADE_9_RULES = {
@@ -619,7 +623,7 @@ export const GRADE_9_RULES = {
       skills: ["Spręsti įvairias kvadratines lygtis"],
     },
     {
-      title: "Lygčių sistemos",
+      title: "Lygčių sistemos, kurių viena yra tiesinė, kita kvadratinė",
       theory: ["Lygčių sistemos: 1 tiesinė ir 1 kvadratinė"],
       skills: [
         "Spręsti tiesines ir mišrias lygčių sistemas",
@@ -870,7 +874,7 @@ export function buildGradeConstraints(grade: number): string {
   if (grade === 7) return `7 KL. laipsniai: ne tik $2^5$ — naudok savybes ($a^m\\cdot a^n$, $(a^m)^n$, $a^0$ ir pan.).`;
 
   if (grade === 8) {
-    return `8 KL. privaloma: užduotys tik iš 8 kl. programos. Šaknys — savybės arba išskaidymas dauginamaisiais, ne tik $\\sqrt{25}$. Skaidymas: bendras dauginys, GDF, grupavimo būdas (4 nariai). DRAUDŽIAMA: kvadratinio trinario $x^2+bx+c$ skaidymas; modulis $|x|$; trupmeniniai raidiniai reiškiniai ($\\frac{ax+b}{cx+d}$ ir pan.) — 9 kl. Lygčių sistemos — tik $x,y$; ne kvadratinės. Geometrija — Pitagoras, 30°/45°/60°, vidurio linija; 3D — plotas/tūris + Pitagoras erdvėje jei reikia.`;
+    return `8 KL. privaloma: užduotys tik iš 8 kl. programos. Šaknys — savybės arba išskaidymas dauginamaisiais, ne tik $\\sqrt{25}$; DRAUDŽIAMA šaknų temoje: iracionaliosios lygtys, apibrėžimo sritis (ypač lengvoms). Vektoriai — tik geometriškai, be koordinačių ir skaliarinės sandaugos. Skaidymas: bendras dauginys, GDF, grupavimo būdas (4 nariai). DRAUDŽIAMA: kvadratinio trinario $x^2+bx+c$ skaidymas; modulis $|x|$; trupmeniniai raidiniai reiškiniai ($\\frac{ax+b}{cx+d}$ ir pan.) — 9 kl. Lygčių sistemos — tik $x,y$; ne kvadratinės. Planimetrija — Pitagoras, 30°/45°/60°, vidurio linija; 3D — plotas/tūris + Pitagoras erdvėje jei reikia.`;
   }
 
   if (grade === 5) return "";

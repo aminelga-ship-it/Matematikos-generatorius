@@ -23,6 +23,7 @@ export async function generateTasksViaOpenAI(params: {
   includeSolutions: boolean;
   promptProfile?: SystemPromptProfile;
   topicSubtopicGuided?: boolean;
+  omitAnswers?: boolean;
 }): Promise<{ tasks: Task[] } | { error: string }> {
   const {
     openaiKey,
@@ -36,6 +37,7 @@ export async function generateTasksViaOpenAI(params: {
     includeSolutions,
     promptProfile: promptProfileIn,
     topicSubtopicGuided = false,
+    omitAnswers = false,
   } = params;
 
   const imageOnly = isImageOnlyRequest(prompt ?? "", !!imageBase64);
@@ -71,6 +73,7 @@ export async function generateTasksViaOpenAI(params: {
           effectiveIncludeSolutions,
           promptProfile,
           topicSubtopicGuided,
+          omitAnswers,
         ),
       },
       { role: "user", content: userContent },
@@ -131,6 +134,9 @@ export async function generateTasksViaOpenAI(params: {
     }
     if (!effectiveIncludeSolutions) {
       tasks = tasks.map((t) => ({ ...t, solution: "" }));
+    }
+    if (omitAnswers) {
+      tasks = tasks.map((t) => ({ ...t, answer: "", solution: "" }));
     }
     if (withGraph && grade >= 9) {
       tasks = tasks.filter(

@@ -8,6 +8,7 @@ import { isImageOnlyRequest } from "./prompt.ts";
 import { IVAIRUS_MIN_TASKS, isMixedDifficulty, splitIvairusTaskCounts, splitMixedTaskCounts } from "./prompt.ts";
 import { assertLoggedInWithinLimits, incrementLoggedInUsage, type ProfileUsage } from "./profileUsage.ts";
 import { buildSavarankiskasTopicPrompt } from "./savarankiskas.ts";
+import { solveTaskViaOpenAI } from "./solveTask.ts";
 import { fixTaskLatex, type Task } from "./taskLatex.ts";
 
 const corsHeaders = {
@@ -17,6 +18,7 @@ const corsHeaders = {
 };
 
 interface TaskRequest {
+  action?: "solve";
   grade: number;
   taskCount: number;
   prompt: string;
@@ -32,6 +34,8 @@ interface TaskRequest {
   subtopicIds?: string[];
   /** Pagal temą — temų be potemių ID sąrašas */
   topicIds?: string[];
+  /** action=solve — užduoties tekstas */
+  question?: string;
 }
 
 function bankDifficultyFromRequest(difficulty: string): BankDifficulty {
@@ -81,7 +85,9 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    const body: TaskRequest = await req.json();
     const {
+      action,
       grade,
       taskCount,
       prompt,
@@ -93,7 +99,8 @@ Deno.serve(async (req: Request) => {
       generationMode,
       subtopicIds,
       topicIds,
-    }: TaskRequest = await req.json();
+      question: solveQuestion,
+    } = body;
 
     if (!user || !userProfile) {
       return new Response(
@@ -104,8 +111,66 @@ Deno.serve(async (req: Request) => {
 
     const userPlan = userProfile.plan ?? "free";
     const isAdmin = userProfile.role === "admin";
-    const hasProAccess = isAdmin || userPlan === "pro" || userPlan === "unlimited";
     const skipUsageCount = isAdmin || userPlan === "unlimited";
+
+    if (action === "solve") {
+      if (!grade || grade < 1 || grade > 12) {
+        return new Response(
+          JSON.stringify({ error: "Netinkama klasė." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      const q = typeof solveQuestion === "string" ? solveQuestion.trim() : "";
+      if (!q) {
+        return new Response(
+          JSON.stringify({ error: "Nenurodytas uždavinys." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const solveCheck = assertLoggedInWithinLimits(userProfile as ProfileUsage, 1);
+      if (!solveCheck.ok) {
+        return new Response(
+          JSON.stringify({
+            error: solveCheck.error,
+            ...(solveCheck.code ? { code: solveCheck.code } : {}),
+          }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const openaiKey = Deno.env.get("OPENAI_API_KEY");
+      if (!openaiKey) {
+        return new Response(
+          JSON.stringify({ error: "OpenAI API raktas nesukonfigūruotas." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const solveResult = await solveTaskViaOpenAI({ openaiKey, grade, question: q });
+      if ("error" in solveResult) {
+        return new Response(
+          JSON.stringify({ error: solveResult.error }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      if (solveCheck.period && !skipUsageCount) {
+        await incrementLoggedInUsage(
+          supabaseAdmin,
+          userProfile as ProfileUsage,
+          1,
+          solveCheck.period,
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ answer: solveResult.answer }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const hasProAccess = isAdmin || userPlan === "pro" || userPlan === "unlimited";
 
     let loggedInPeriod: {
       requestsToday: number;
@@ -215,6 +280,23 @@ Deno.serve(async (req: Request) => {
     const effectiveWithGraph = !!(withGraph && grade >= 9);
 
     if (isTopicMode) {
+      const aiDifficulty =
+        effectiveDifficulty === "savarankiskas" ? "savarankiskas" : effectiveDifficulty;
+
+      const {
+        prompt: topicPrompt,
+        subtopicGuided,
+        omitAnswers,
+        deferredAnswers,
+      } = await buildSavarankiskasTopicPrompt(
+        supabaseAdmin,
+        topicIdList,
+        subtopicIdList,
+        grade,
+        aiDifficulty,
+        taskCount,
+      );
+
       const { tasks: bankTasks, error: bankError } = await selectTasksFromBank(
         supabaseAdmin,
         grade,
@@ -243,18 +325,6 @@ Deno.serve(async (req: Request) => {
           );
         }
 
-        const aiDifficulty =
-          effectiveDifficulty === "savarankiskas" ? "savarankiskas" : effectiveDifficulty;
-
-        const { prompt: topicPrompt, subtopicGuided } = await buildSavarankiskasTopicPrompt(
-          supabaseAdmin,
-          topicIdList,
-          subtopicIdList,
-          grade,
-          aiDifficulty,
-          needAi,
-        );
-
         const aiResult = await generateTasksViaOpenAI({
           openaiKey,
           grade,
@@ -266,6 +336,7 @@ Deno.serve(async (req: Request) => {
           includeSolutions: false,
           promptProfile: "topic",
           topicSubtopicGuided: subtopicGuided,
+          omitAnswers,
         });
 
         if ("error" in aiResult) {
@@ -313,14 +384,20 @@ Deno.serve(async (req: Request) => {
         }));
       }
 
-      const bankMapped: Task[] = bankTasks.map((t) => ({
-        question: t.question,
-        answer: t.answer,
-        solution: t.solution,
-        diagram_config: t.diagram_config as DiagramConfig | undefined,
-        function_equation: t.function_equation,
-        bank_item_id: t.bank_item_id,
-      }));
+      const bankMapped: Task[] = bankTasks.map((t) => {
+        const base = {
+          question: t.question,
+          answer: t.answer,
+          solution: t.solution,
+          diagram_config: t.diagram_config as DiagramConfig | undefined,
+          function_equation: t.function_equation,
+          bank_item_id: t.bank_item_id,
+        };
+        if (omitAnswers) {
+          return { ...base, answer: "", solution: "" };
+        }
+        return base;
+      });
 
       let tasks = shuffleTasks([...bankMapped, ...aiTasks]).map((t) => fixTaskLatex(t, grade));
 
@@ -339,6 +416,7 @@ Deno.serve(async (req: Request) => {
           fromBank: needAi === 0,
           bankCount: bankTasks.length,
           aiCount: aiTasks.length,
+          deferredAnswers,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );

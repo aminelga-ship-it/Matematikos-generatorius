@@ -32,20 +32,12 @@ function shuffle<T>(arr: T[]): T[] {
 
 type DeliveryInfo = { delivered_at: string };
 
-/** Pirmiausia dar nematytos; jei trūksta — seniausiai duotos. */
+/** Tik dar nematytos užduotys; jau duotos — nebekartojamos (tada AI papildo). */
 function orderForUser(
   rows: BankTaskRow[],
   delivered: Map<string, DeliveryInfo>,
 ): BankTaskRow[] {
-  const unseen = rows.filter((r) => !delivered.has(r.id));
-  const seen = rows
-    .filter((r) => delivered.has(r.id))
-    .sort((a, b) => {
-      const ta = delivered.get(a.id)!.delivered_at;
-      const tb = delivered.get(b.id)!.delivered_at;
-      return ta.localeCompare(tb);
-    });
-  return [...shuffle(unseen), ...shuffle(seen)];
+  return shuffle(rows.filter((r) => !delivered.has(r.id)));
 }
 
 async function fetchUserDeliveries(
@@ -82,16 +74,21 @@ async function recordUserDeliveries(
   const now = new Date().toISOString();
 
   for (const task_bank_item_id of itemIds) {
-    const { data: existing } = await supabaseAdmin
+    const { data: existing, error: selectError } = await supabaseAdmin
       .from("user_bank_deliveries")
       .select("delivery_count")
       .eq("user_id", userId)
       .eq("task_bank_item_id", task_bank_item_id)
       .maybeSingle();
 
+    if (selectError) {
+      console.error("user_bank_deliveries select:", selectError.message);
+      continue;
+    }
+
     if (existing) {
       const prev = (existing as { delivery_count: number }).delivery_count ?? 0;
-      await supabaseAdmin
+      const { error: updateError } = await supabaseAdmin
         .from("user_bank_deliveries")
         .update({
           delivered_at: now,
@@ -99,13 +96,19 @@ async function recordUserDeliveries(
         })
         .eq("user_id", userId)
         .eq("task_bank_item_id", task_bank_item_id);
+      if (updateError) {
+        console.error("user_bank_deliveries update:", updateError.message);
+      }
     } else {
-      await supabaseAdmin.from("user_bank_deliveries").insert({
+      const { error: insertError } = await supabaseAdmin.from("user_bank_deliveries").insert({
         user_id: userId,
         task_bank_item_id,
         delivered_at: now,
         delivery_count: 1,
       });
+      if (insertError) {
+        console.error("user_bank_deliveries insert:", insertError.message);
+      }
     }
   }
 }

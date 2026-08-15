@@ -9,7 +9,8 @@ import { PricingPage } from "./components/PricingPage";
 import { GuidePage } from "./components/GuidePage";
 import { AdminBankPage } from "./components/AdminBankPage";
 import { RolePickerModal } from "./components/RolePickerModal";
-import { generateTasks, saveSession, getRecentSessions, loadSession, ProLimitExhaustedError } from "./lib/api";
+import { generateTasks, saveSession, getRecentSessions, loadSession, solveTaskAnswer, ProLimitExhaustedError } from "./lib/api";
+import { selectionSlugsUseGenerateAnswer, resolveTopicSlugsFromSelection } from "./lib/deferredAnswers";
 import { updateTaskBankItem, createGeneratedTaskBankDraft } from "./lib/bankApi";
 import type { Task, MathSession, Difficulty, GenerationMode, BankDifficulty } from "./lib/types";
 import { usePlan, useUpgradeGate } from './lib/usePlan';
@@ -39,6 +40,9 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [proLimitExhausted, setProLimitExhausted] = useState(false);
   const [generationMeta, setGenerationMeta] = useState<{ bankCount: number; aiCount: number } | null>(null);
+  const [generateAnswerPilot, setGenerateAnswerPilot] = useState(false);
+  const [activeTopicSlugs, setActiveTopicSlugs] = useState<string[]>([]);
+  const [generatingAnswerIndex, setGeneratingAnswerIndex] = useState<number | null>(null);
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [showAnswers, setShowAnswers] = useState(false);
   const [showSolutions, setShowSolutions] = useState(false);
@@ -101,6 +105,20 @@ export default function App() {
     });
   }, []);
 
+  const generateAnswerMode =
+    generateAnswerPilot || selectionSlugsUseGenerateAnswer(activeTopicSlugs);
+
+  useEffect(() => {
+    if (!tasks || generationMode !== "topic") return;
+    if (topicIds.length === 0 && subtopicIds.length === 0) return;
+    void resolveTopicSlugsFromSelection(topicIds, subtopicIds).then((slugs) => {
+      setActiveTopicSlugs(slugs);
+      if (selectionSlugsUseGenerateAnswer(slugs)) {
+        setGenerateAnswerPilot(true);
+      }
+    });
+  }, [tasks, generationMode, topicIds, subtopicIds]);
+
   const handleGenerate = useCallback(async () => {
     if (!user) {
       setError("Norėdami generuoti užduotis, prisijunkite.");
@@ -132,6 +150,18 @@ export default function App() {
           ? { bankCount: meta.bankCount, aiCount: meta.aiCount }
           : null,
       );
+      if (generationMode === "topic") {
+        const slugs = await resolveTopicSlugsFromSelection(topicIds, subtopicIds);
+        setActiveTopicSlugs(slugs);
+        const pilot =
+          meta?.deferredAnswers === true ||
+          selectionSlugsUseGenerateAnswer(slugs) ||
+          (grade === 10 && (topicIds.length > 0 || subtopicIds.length > 0));
+        setGenerateAnswerPilot(pilot);
+      } else {
+        setActiveTopicSlugs([]);
+        setGenerateAnswerPilot(false);
+      }
       setCurrentGrade(grade);
       setShowAnswers(false);
       setShowSolutions(false);
@@ -194,6 +224,16 @@ export default function App() {
     setTopicIds(session.topic_ids ?? []);
     setSubtopicIds(session.subtopic_ids ?? []);
     setCurrentGrade(session.grade);
+    const sessionSlugs = await resolveTopicSlugsFromSelection(
+      session.topic_ids ?? [],
+      session.subtopic_ids ?? [],
+    );
+    setActiveTopicSlugs(sessionSlugs);
+    setGenerateAnswerPilot(
+      selectionSlugsUseGenerateAnswer(sessionSlugs) ||
+        (session.grade === 10 &&
+          ((session.topic_ids?.length ?? 0) > 0 || (session.subtopic_ids?.length ?? 0) > 0)),
+    );
     setShowAnswers(false);
     setShowSolutions(false);
   }, []);
@@ -201,10 +241,44 @@ export default function App() {
   const handleReset = useCallback(() => {
     setTasks(null);
     setGenerationMeta(null);
+    setGenerateAnswerPilot(false);
+    setActiveTopicSlugs([]);
+    setGeneratingAnswerIndex(null);
     setError(null);
     setSubtopicIds([]);
     setTopicIds([]);
   }, []);
+
+  const handleGenerateAnswer = useCallback(async (index: number, question: string) => {
+    const trimmed = question.trim();
+    if (!trimmed) {
+      setError("Užduoties tekstas tuščias — negalima generuoti atsakymo.");
+      return;
+    }
+    setGeneratingAnswerIndex(index);
+    setError(null);
+    try {
+      const answer = await solveTaskAnswer(currentGrade, trimmed);
+      setTasks((prev) => {
+        if (!prev) return prev;
+        const next = [...prev];
+        const t = next[index];
+        if (t) next[index] = { ...t, answer: answer.trim() };
+        return next;
+      });
+      void refetchProfile();
+    } catch (err) {
+      if (err instanceof ProLimitExhaustedError) {
+        setProLimitExhausted(true);
+        setError(err.message);
+      } else {
+        setProLimitExhausted(false);
+        setError(err instanceof Error ? err.message : "Nepavyko generuoti atsakymo.");
+      }
+    } finally {
+      setGeneratingAnswerIndex(null);
+    }
+  }, [currentGrade, refetchProfile]);
 
   const handleBankFeedback = useCallback((index: number, result: "approved" | "draft" | "deleted") => {
     if (result === "deleted") {
@@ -313,12 +387,20 @@ export default function App() {
             topicIds={generationMode === "topic" ? topicIds : undefined}
             subtopicIds={generationMode === "topic" ? subtopicIds : undefined}
             sourceHint={
-              showGenerationSourceHint() && generationMeta
-                ? `${generationMeta.bankCount} užduotys iš patvirtinto banko, ${generationMeta.aiCount} sugeneruota AI`
-                : undefined
+              generateAnswerMode
+                ? "Atsakymą generuokite mygtuku „Generuoti atsakymą“ po kiekviena užduotimi (1 generavimo užduotis)."
+                : showGenerationSourceHint() && generationMeta
+                  ? `${generationMeta.bankCount} užduotys iš patvirtinto banko, ${generationMeta.aiCount} sugeneruota AI`
+                  : undefined
             }
+            generateAnswerMode={generateAnswerMode}
+            generatingAnswerIndex={generatingAnswerIndex}
+            onGenerateAnswer={handleGenerateAnswer}
             onBankFeedback={handleBankFeedback}
             onBankItemLinked={handleBankItemLinked}
+            error={error}
+            proLimitExhausted={proLimitExhausted}
+            onLimitTopUp={goToLimitTopUp}
           />
         ) : (
           <div className="flex flex-col gap-10">
@@ -373,6 +455,7 @@ export default function App() {
                   setGrade(v);
                   setSubtopicIds([]);
                   setTopicIds([]);
+                  setActiveTopicSlugs([]);
                   if (v > 6) setWithDiagram(false);
                   if (v < 9) setWithGraph(false);
                 }}
@@ -400,6 +483,7 @@ export default function App() {
                 onSubtopicIdsChange={setSubtopicIds}
                 selectedTopicIds={topicIds}
                 onTopicIdsChange={setTopicIds}
+                onTopicSlugsChange={setActiveTopicSlugs}
               />
             </div>
 

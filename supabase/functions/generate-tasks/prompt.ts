@@ -170,12 +170,18 @@ function buildFormattingSection(grade: number): string {
   if (grade <= 6) {
     return "Formatavimas: trupmenos $\\frac{a}{b}$; procentai $n\\%$; matavimo vienetai su laipsniu — $60\\ \\text{cm}^3$, $12\\ \\text{m}^2$ (ne cm^3 be LaTeX).";
   }
-  if (grade <= 10) return "Formatavimas: $\\frac{}{}$, $\\sqrt{}$, $\\leq$, kintamieji $x$.";
+  if (grade <= 10) {
+    const roots =
+      grade === 8
+        ? " Šaknys — tik $\\sqrt{n}$, $\\sqrt[3]{n}$; DRAUDŽIAMA žodžiais („kvadratinę šaknį iš …“)."
+        : "";
+    return `Formatavimas: $\\frac{}{}$, $\\sqrt{}$, $\\leq$, kintamieji $x$.${roots}`;
+  }
   return "Formatavimas: + trig./log.; $\\cup$, $\\cap$ intervalams.";
 }
 
 const LT_GEOMETRY_WORDING =
-  "Geometrijos LT: stačiojo trikampio (ne „statusio“, „statusis“, „stačiasis trikampis“); įstrižainė (ne „diagonalė“); vidurio linija geometrijoje (ne „mediana“ — mediana tik statistikoje); stačiojo trikampio įžambinė ir statiniai.";
+  "Geometrijos LT: stačiojo trikampio (ne „statusio“, „statusis“, „stačiasis trikampis“); smailusis kampas (ne „aštrusis kampas“); įstrižainė (ne „diagonalė“); vidurio linija geometrijoje (ne „mediana“ — mediana tik statistikoje); stačiojo trikampio įžambinė ir statiniai.";
 
 function buildTerminologySection(grade: number): string {
   let base: string;
@@ -281,6 +287,7 @@ function buildVariableSystemPromptSuffix(
   withSolution: boolean,
   _profile: SystemPromptProfile,
   topicSubtopicGuided = false,
+  omitAnswers = false,
 ): string {
   const isMixed = difficulty === "savarankiskas" || difficulty === "ivairus";
   const mixCounts = isMixed ? splitMixedTaskCounts(difficulty, taskCount) : null;
@@ -291,19 +298,27 @@ function buildVariableSystemPromptSuffix(
 
   const solutionField = withSolution ? `"solution":"…",` : `"solution":"",`;
 
-  const elementaryJsonAnswer = grade <= 4 ? '"answer":"68"' : '"answer":"$x=3$"';
+  const jsonAnswerField = omitAnswers
+    ? '"answer":"",'
+    : grade <= 4
+      ? '"answer":"68",'
+      : '"answer":"$x=3$",';
+  const elementaryJsonAnswer = omitAnswers ? '"answer":"",' : '"answer":"68"';
   const elementaryQuestionSnippet =
     grade <= 4 && !withDiagram
       ? `"question":"Apskaičiuokite stulpeliu.\\n$$\\\\begin{array}{r} 23 \\\\\\\\ + \\\\; 45 \\\\\\\\ \\\\hline \\\\end{array}$$",`
       : `"question":"…",`;
 
+  const diagramAnswerField = omitAnswers ? '"answer":"",' : '"answer":"6 cm",';
+  const diagramAnswerFieldGrade = omitAnswers ? '"answer":"",' : '"answer":"$b=8$ cm",';
+
   const jsonExample = withDiagram
     ? grade <= 4
-      ? `{"tasks":[{"question":"Pagal brėžinį raskite kraštinės $X$ ilgį.","answer":"6 cm",${solutionField}"diagram_config":{"type":"RIGHT_TRIANGLE","labels":{"a":"6 cm","b":"X","c":"10 cm"}}${withGraph ? ',"function_equation":"y=x^2-4"' : ""}}]}`
-      : `{"tasks":[{"question":"Pagal brėžinio duomenis raskite kraštinės $b$ ilgį.","answer":"$b=8$ cm",${solutionField}"diagram_config":{"type":"RIGHT_TRIANGLE","labels":{"a":"6 cm","b":"X","c":"10 cm"}}${withGraph ? ',"function_equation":"y=x^2-4"' : ""}}]}`
+      ? `{"tasks":[{"question":"Pagal brėžinį raskite kraštinės $X$ ilgį.",${diagramAnswerField}${solutionField}"diagram_config":{"type":"RIGHT_TRIANGLE","labels":{"a":"6 cm","b":"X","c":"10 cm"}}${withGraph ? ',"function_equation":"y=x^2-4"' : ""}}]}`
+      : `{"tasks":[{"question":"Pagal brėžinio duomenis raskite kraštinės $b$ ilgį.",${diagramAnswerFieldGrade}${solutionField}"diagram_config":{"type":"RIGHT_TRIANGLE","labels":{"a":"6 cm","b":"X","c":"10 cm"}}${withGraph ? ',"function_equation":"y=x^2-4"' : ""}}]}`
     : grade <= 4
       ? `{"tasks":[{${elementaryQuestionSnippet}${elementaryJsonAnswer},${solutionField}${withGraph ? '"function_equation":"y=2*x-1"' : ""}}]}`
-      : `{"tasks":[{"question":"…","answer":"$x=3$",${solutionField}${withGraph ? '"function_equation":"y=2*x-1"' : ""}}]}`;
+      : `{"tasks":[{"question":"…",${jsonAnswerField}${solutionField}${withGraph ? '"function_equation":"y=2*x-1"' : ""}}]}`;
 
   const diagramRule = withDiagram
     ? `Brėžinys: jei yra diagram_config — labels privalo turėti ≥2 reikšmes (duotus skaičius + "?" arba du duotus); sutampa su question. Užduotims „pagal brėžinį/duomenis brėžinyje“ — be tuščių labels.`
@@ -317,7 +332,9 @@ function buildVariableSystemPromptSuffix(
       : `Sprendimai: PRIVALOMA, glaustai. Patikrink answer.`
     : grade <= 4
       ? `Sprendimai: "solution"="" visur. Gryniems skaičiavimams stulpelis/kampas PRIVALOMAS question $$...$$ bloke (ne tik solution). Tekstiniame uždavinyje question be skaičiavimo veiksmų. answer — tik skaičius (+ liek. jei reikia).`
-      : `Sprendimai: "solution"="" visur. Tik teisingas glaustas answer.`;
+      : omitAnswers
+        ? `Sprendimai: "solution"="" visur. answer: VISADA tuščias "" (ne generuok atsakymų — mokytojas patvirtins).`
+        : `Sprendimai: "solution"="" visur. Tik teisingas glaustas answer.`;
 
   const difficultyBlock = topicSubtopicGuided
     ? isMixed
@@ -373,6 +390,7 @@ export function buildSystemPrompt(
   withSolution: boolean,
   profile: SystemPromptProfile = "topic",
   topicSubtopicGuided = false,
+  omitAnswers = false,
 ): string {
   if (profile === "image-only") {
     return getStaticSystemPromptPrefix(withDiagram, withGraph, grade) +
@@ -388,6 +406,7 @@ export function buildSystemPrompt(
       withSolution,
       profile,
       topicSubtopicGuided,
+      omitAnswers,
     );
 }
 

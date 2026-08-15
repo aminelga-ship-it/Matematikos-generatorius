@@ -59,6 +59,7 @@ export interface GenerateTasksMeta {
   fromBank: boolean;
   bankCount: number;
   aiCount: number;
+  deferredAnswers?: boolean;
 }
 
 export interface GenerateTasksResult {
@@ -124,10 +125,49 @@ export async function generateTasks(
           fromBank: data.fromBank === true,
           bankCount: Number(data.bankCount) || 0,
           aiCount: Number(data.aiCount) || 0,
+          deferredAnswers: data.deferredAnswers === true,
         }
       : undefined;
 
   return { tasks: data.tasks as Task[], meta };
+}
+
+export async function solveTaskAnswer(grade: number, question: string): Promise<string> {
+  const token = await getAccessToken();
+
+  const response = await fetch(GENERATE_TASKS_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      apikey: SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({
+      action: "solve",
+      grade,
+      taskCount: 1,
+      prompt: "",
+      difficulty: "vidutinės",
+      question,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || data.error) {
+    if (data.code === "pro_limit") {
+      throw new ProLimitExhaustedError(
+        typeof data.error === "string" ? data.error : PRO_LIMIT_EXHAUSTED_MESSAGE,
+      );
+    }
+    throw new Error(data.error ?? `Klaida: ${response.status}`);
+  }
+
+  if (typeof data.answer !== "string" || !data.answer.trim()) {
+    throw new Error("Nepavyko gauti atsakymo.");
+  }
+
+  return data.answer;
 }
 
 export async function saveSession(

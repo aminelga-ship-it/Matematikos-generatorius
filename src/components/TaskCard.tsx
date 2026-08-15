@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, CheckCircle, BookOpen, Pencil, Check, X } from "lucide-react";
+import { ChevronDown, ChevronUp, CheckCircle, BookOpen, Pencil, Check, X, Sparkles, Loader2 } from "lucide-react";
 import { MathText } from "./MathText";
 import { GeometryVisualizer } from "./GeometryVisualizer";
 import { GeoGebraGraph } from './GeoGebraGraph';
@@ -12,6 +12,9 @@ interface TaskCardProps {
   index: number;
   showAnswers: boolean;
   showSolutions: boolean;
+  generateAnswerMode?: boolean;
+  generatingAnswer?: boolean;
+  onGenerateAnswer?: (index: number, question: string) => void;
   canEdit?: boolean;
   onEdit?: (index: number, updated: Task) => void;
   showTeacherFeedback?: boolean;
@@ -102,12 +105,21 @@ const CARD_ACCENT_COLORS = [
   "border-l-indigo-500",
 ];
 
-export function TaskCard({ task, index, showAnswers, showSolutions, canEdit, onEdit, showTeacherFeedback, grade, sessionDifficulty, topicIds, subtopicIds, onBankFeedback, onBankItemLinked }: TaskCardProps) {
+export function TaskCard({ task, index, showAnswers, showSolutions, generateAnswerMode, generatingAnswer, onGenerateAnswer, canEdit, onEdit, showTeacherFeedback, grade, sessionDifficulty, topicIds, subtopicIds, onBankFeedback, onBankItemLinked }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draftQuestion, setDraftQuestion] = useState(task.question);
   const [draftFunctionEquation, setDraftFunctionEquation] = useState(task.function_equation ?? "");
   const [draftDiagramRemoved, setDraftDiagramRemoved] = useState(false);
+
+  const hasAnswerText = (task.answer ?? "").trim().length > 0;
+  const showAnswerBlock =
+    !editing && hasAnswerText && (generateAnswerMode || showAnswers);
+  const showGenerateButton =
+    !editing &&
+    !hasAnswerText &&
+    onGenerateAnswer &&
+    (generateAnswerMode || grade === 10);
 
   const hasGraph = Boolean(task.function_equation && task.function_equation.trim() !== "");
   const hasDiagram = Boolean(task.diagram_config && !draftDiagramRemoved);
@@ -317,8 +329,27 @@ export function TaskCard({ task, index, showAnswers, showSolutions, canEdit, onE
         )}
       </div>
 
-      {/* Answer */}
-      {showAnswers && !editing && (
+      {/* Generate answer (pilot: 10 kl. racionaliosios lygtys) */}
+      {showGenerateButton && (
+        <div className="mx-6 mb-4">
+          <button
+            type="button"
+            onClick={() => onGenerateAnswer?.(index, task.question.trim() || displayQuestion)}
+            disabled={generatingAnswer}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100 transition disabled:opacity-60"
+          >
+            {generatingAnswer ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Sparkles size={15} />
+            )}
+            {generatingAnswer ? "Generuojama…" : "Generuoti atsakymą"}
+          </button>
+          <p className="text-[11px] text-slate-400 mt-1.5">Skaičiuojama kaip 1 generavimo užduotis.</p>
+        </div>
+      )}
+
+      {showAnswerBlock && (
         <div className="mx-6 mb-4 flex items-center gap-3 px-4 py-3 bg-emerald-50 rounded-xl border border-emerald-100">
           <CheckCircle size={15} className="text-emerald-500 flex-shrink-0" />
           <div className="min-w-0">

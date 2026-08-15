@@ -1,7 +1,7 @@
 
 import {
   Eye, EyeOff, BookOpen, BookX, Printer, ArrowLeft, GraduationCap,
-  FileType2, Lock,
+  FileType2, Lock, AlertCircle,
 } from "lucide-react";
 import { TaskCard } from "./TaskCard";
 import type { Task, Difficulty } from "../lib/types";
@@ -27,6 +27,12 @@ interface TasksViewProps {
   topicIds?: string[];
   subtopicIds?: string[];
   sourceHint?: string;
+  generateAnswerMode?: boolean;
+  generatingAnswerIndex?: number | null;
+  onGenerateAnswer?: (index: number, question: string) => void;
+  error?: string | null;
+  proLimitExhausted?: boolean;
+  onLimitTopUp?: () => void;
   onBankFeedback?: (index: number, result: "approved" | "draft" | "deleted") => void;
   onBankItemLinked?: (index: number, bankItemId: string) => void;
 }
@@ -49,10 +55,19 @@ export function TasksView({
   topicIds,
   subtopicIds,
   sourceHint,
+  generateAnswerMode,
+  generatingAnswerIndex,
+  onGenerateAnswer,
   onBankFeedback,
   onBankItemLinked,
+  error,
+  proLimitExhausted,
+  onLimitTopUp,
 }: TasksViewProps) {
   const hasSolutions = tasksIncludeSolutions(tasks);
+
+  const hideGlobalAnswersToggle =
+    generateAnswerMode || (grade === 10 && tasks.some((t) => !(t.answer ?? "").trim()));
 
   return (
     <div className="space-y-5">
@@ -73,17 +88,19 @@ export function TasksView({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={onToggleAnswers}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
-              showAnswers
-                ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
-            }`}
-          >
-            {showAnswers ? <Eye size={13} /> : <EyeOff size={13} />}
-            {showAnswers ? "Slėpti atsakymus" : "Atsakymai"}
-          </button>
+          {!hideGlobalAnswersToggle && (
+            <button
+              onClick={onToggleAnswers}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
+                showAnswers
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                  : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+              }`}
+            >
+              {showAnswers ? <Eye size={13} /> : <EyeOff size={13} />}
+              {showAnswers ? "Slėpti atsakymus" : "Atsakymai"}
+            </button>
+          )}
 
           {hasSolutions && (
             <button
@@ -135,6 +152,29 @@ export function TasksView({
         </div>
       </div>
 
+      {error && (
+        <div className="flex items-start gap-3 px-4 py-3.5 bg-red-50 rounded-xl border border-red-100">
+          <AlertCircle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-700">
+            {proLimitExhausted ? (
+              <>
+                Atsiprašome, jūsų limitas išnaudotas.{" "}
+                <button
+                  type="button"
+                  onClick={onLimitTopUp}
+                  className="font-semibold text-amber-800 underline hover:text-amber-900"
+                >
+                  Papildykite limitus
+                </button>
+                .
+              </>
+            ) : (
+              error
+            )}
+          </p>
+        </div>
+      )}
+
       {sourceHint && (
         <p className="text-sm text-violet-700 bg-violet-50 border border-violet-100 rounded-xl px-4 py-2.5">
           {sourceHint}
@@ -150,6 +190,9 @@ export function TasksView({
             index={i}
             showAnswers={showAnswers}
             showSolutions={hasSolutions && showSolutions}
+            generateAnswerMode={generateAnswerMode}
+            generatingAnswer={generatingAnswerIndex === i}
+            onGenerateAnswer={onGenerateAnswer}
             canEdit={canEdit}
             onEdit={onEditTask}
             showTeacherFeedback={showTeacherFeedback}
