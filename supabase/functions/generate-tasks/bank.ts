@@ -19,6 +19,8 @@ export interface TaskWithBankId {
   diagram_config?: unknown;
   function_equation?: string;
   bank_item_id: string;
+  from_approved_bank?: boolean;
+  task_difficulty?: BankDifficulty;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -121,6 +123,8 @@ function rowToTask(row: BankTaskRow): TaskWithBankId {
     diagram_config: row.diagram_config ?? undefined,
     function_equation: row.function_equation ?? undefined,
     bank_item_id: row.id,
+    from_approved_bank: true,
+    task_difficulty: row.difficulty,
   };
 }
 

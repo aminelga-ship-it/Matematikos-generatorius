@@ -8,46 +8,7 @@ import {
 } from "docx";
 import { saveAs } from "file-saver";
 import type { Task } from "./types";
-
-// Strip LaTeX/MathTeX markers for plain text export.
-// Converts $...$ inline math to plain text, removes \frac, \sqrt etc.
-function stripLatex(text: string): string {
-  return text
-    .replace(/\$\$/g, "")
-    .replace(/\$([^$]+)\$/g, (_m, inner: string) => inner)
-    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "($1)/($2)")
-    .replace(/\\sqrt\{([^}]+)\}/g, "√($1)")
-    .replace(/\\cdot/g, "·")
-    .replace(/\\times/g, "×")
-    .replace(/\\leq/g, "≤")
-    .replace(/\\geq/g, "≥")
-    .replace(/\\neq/g, "≠")
-    .replace(/\\pi/g, "π")
-    .replace(/\\infty/g, "∞")
-    .replace(/\\cup/g, "∪")
-    .replace(/\\cap/g, "∩")
-    .replace(/\\sin/g, "sin")
-    .replace(/\\cos/g, "cos")
-    .replace(/\\tan/g, "tan")
-    .replace(/\\log/g, "log")
-    .replace(/\\ln/g, "ln")
-    .replace(/\\left/g, "")
-    .replace(/\\right/g, "")
-    .replace(/\\,/g, " ")
-    .replace(/\\;/g, " ")
-    .replace(/\\!/g, "")
-    .replace(/\\\(/g, "(")
-    .replace(/\\\)/g, ")")
-    .replace(/\\\{/g, "{")
-    .replace(/\\\}/g, "}")
-    .replace(/\\(\w+)/g, "$1")
-    .replace(/\^([^{}]+)/g, "^$1")
-    .replace(/\^{([^}]+)}/g, "^$1")
-    .replace(/_([^{}]+)/g, "_$1")
-    .replace(/_{([^}]+)}/g, "_$1")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+import { mathTextToPlainText } from "./mathPlainText";
 
 export function exportToWord(tasks: Task[], grade: number): void {
   const children: Paragraph[] = [
@@ -70,7 +31,7 @@ export function exportToWord(tasks: Task[], grade: number): void {
       new Paragraph({
         children: [
           new TextRun({ text: `${i + 1}. `, bold: true, size: 24 }),
-          new TextRun({ text: stripLatex(task.question), size: 24 }),
+          new TextRun({ text: mathTextToPlainText(task.question), size: 24 }),
         ],
         spacing: { after: 200 },
       })

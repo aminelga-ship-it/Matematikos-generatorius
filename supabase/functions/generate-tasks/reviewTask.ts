@@ -28,9 +28,9 @@ export async function reviewTaskViaOpenAI(params: {
     "Sąlyga:",
     question,
     "",
-    "Patikrink ar sąlyga logiška (skaičiai, kalba, LaTeX). Jei reikia — pataisyk question.",
+    "Patikrink ar sąlyga logiška, atsakymas normalus skaičius pagal temą ir klasę (arba yra prašymas suapvalinti), kalba, LaTeX tvarkingi. Jei reikia — pataisyk question.",
     "Apskaičiuok teisingą atsakymą; jei sąlyga pakeista arba buvęs atsakymas neteisingas — pataisyk answer.",
-    "recommendations: jei sąlyga nepakeista — tiksliai „Sąlyga tinkama“; jei pakeista — tiksliai „Pakeista sąlyga iš … į …“ (originali ir nauja sąlyga).",
+    "recommendations: jei sąlyga nepakeista — tiksliai „Sąlyga tinkama“; jei pakeista — tiksliai „Pataisyta sąlyga“.",
   ].join("\n");
 
   const model = REVIEW_TASK_MODEL;
@@ -43,7 +43,7 @@ export async function reviewTaskViaOpenAI(params: {
       {
         role: "system",
         content:
-          `Matematikos užduoties tikrintojas (${params.grade} kl.). Grąžink tik JSON: {"question":"…","answer":"…","changed":true|false,"recommendations":"…"}. question — patikrinta/pataisyta sąlyga (LaTeX $...$). answer — teisingas galutinis atsakymas (su $...$), be sprendimo žingsnių. changed — true tik jei pakeitei sąlygą. recommendations — TIK vienas iš dviejų: „Sąlyga tinkama“ ARBA „Pakeista sąlyga iš [originali] į [nauja]“. Nerašyk klasės/lygio atitikimo, BMP ar sprendimo.`,
+          `Matematikos užduoties tikrintojas (${params.grade} kl.). Grąžink tik JSON: {"question":"…","answer":"…","changed":true|false,"recommendations":"…"}. question — patikrinta/pataisyta sąlyga (LaTeX $...$). answer — teisingas galutinis atsakymas (su $...$), be sprendimo žingsnių. changed — true tik jei pakeitei sąlygą. recommendations — TIK vienas iš dviejų: „Sąlyga tinkama“ ARBA „Pataisyta sąlyga“. Nerašyk sprendimo ar ilgų komentarų.`,
       },
       { role: "user", content: userMessage },
     ],
@@ -97,7 +97,7 @@ export async function reviewTaskViaOpenAI(params: {
 
     const answer = fixed.answer.trim();
     const recommendations = changed
-      ? `Pakeista sąlyga iš ${question} į ${fixed.question}`
+      ? "Pataisyta sąlyga"
       : "Sąlyga tinkama";
 
     return {

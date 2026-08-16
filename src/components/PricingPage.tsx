@@ -143,6 +143,7 @@ export const PricingPage: React.FC = () => {
   const freeFeatures = [
     { text: '3 užklausos per dieną', included: true },
     { text: '10 užklausų per mėnesį', included: true },
+    { text: '10 antrinių generavimų per mėn.', included: true },
     { text: 'Po 1 užduotį per generaciją', included: true },
     { text: 'Geometrijos brėžiniai', included: true },
     { text: 'GeoGebra grafikai', included: true },
@@ -154,6 +155,7 @@ export const PricingPage: React.FC = () => {
   const proFeatures = [
     { text: 'Be dienos limito', included: true },
     { text: '100 užklausų / 300 užduočių per mėn.', included: true },
+    { text: '80 antrinių generavimų per mėn.', included: true },
     { text: 'Iki 15 užduočių per generaciją', included: true },
     { text: 'Nuotraukos įkėlimas', included: true },
     { text: 'Užduočių redagavimas', included: true },
@@ -163,6 +165,7 @@ export const PricingPage: React.FC = () => {
 
   const unlimitedFeatures = [
     { text: 'Neribotos užklausos ir užduotys', included: true },
+    { text: 'Neriboti antriniai generavimai', included: true },
     { text: 'Iki 15 užduočių per generaciją', included: true },
     { text: 'Visos PRO funkcijos', included: true },
   ];

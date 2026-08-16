@@ -5,11 +5,13 @@ export const PLAN_LIMITS = {
     maxRequestsPerDay: 3,
     maxRequestsPerMonth: 10,
     maxTasksPerGeneration: 1,
+    maxSecondaryPerMonth: 10,
   },
   pro: {
     maxRequestsPerMonth: 100,
     maxTasksPerMonth: 300,
     maxTasksPerGeneration: 15,
+    maxSecondaryPerMonth: 80,
   },
   unlimited: {
     maxTasksPerGeneration: 15,

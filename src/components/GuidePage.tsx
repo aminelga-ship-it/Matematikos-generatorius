@@ -255,7 +255,13 @@ export function GuidePage({ isAdmin }: GuidePageProps) {
   };
 
   const resetDefaults = () => {
-    if (!confirm("Atstatyti numatytąjį turinį? Neišsaugoti pakeitimai bus prarasti.")) return;
+    if (
+      !confirm(
+        "Atstatyti visą turinį į programos numatytąjį? Jūsų ankstesni rankiniai pakeitimai bus prarasti (nebent juos nukopijavote).",
+      )
+    ) {
+      return;
+    }
     setDraft(structuredClone(DEFAULT_GENERATION_GUIDE));
   };
 
@@ -305,14 +311,20 @@ export function GuidePage({ isAdmin }: GuidePageProps) {
       {isAdmin && (
         <div className="flex flex-wrap items-center justify-center gap-2">
           {!editing ? (
-            <button
-              type="button"
-              onClick={startEdit}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-violet-600 text-white hover:bg-violet-700"
-            >
-              <Pencil size={16} />
-              Redaguoti turinį
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={startEdit}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-violet-600 text-white hover:bg-violet-700"
+              >
+                <Pencil size={16} />
+                Redaguoti turinį
+              </button>
+              <p className="w-full text-center text-xs text-slate-400 max-w-md mx-auto">
+                Antriniai generavimai ir susiję DUK atnaujinami automatiškai; kiti jūsų tekstai lieka iš
+                duomenų bazės.
+              </p>
+            </>
           ) : (
             <>
               <button
@@ -338,8 +350,12 @@ export function GuidePage({ isAdmin }: GuidePageProps) {
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl text-amber-800 bg-amber-50 border border-amber-200 hover:bg-amber-100"
               >
                 <RotateCcw size={16} />
-                Numatyta
+                Atstatyti numatytąjį
               </button>
+              <p className="w-full text-center text-xs text-amber-700 max-w-lg mx-auto">
+                „Atstatyti numatytąjį“ pakeičia visą turinį programos numatytuoju — jūsų ankstesni
+                rankiniai redagavimai bus prarasti, jei neišsaugote atsarginę kopiją.
+              </p>
             </>
           )}
           {saveError && <p className="w-full text-center text-sm text-red-600">{saveError}</p>}

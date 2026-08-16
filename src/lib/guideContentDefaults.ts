@@ -1,4 +1,4 @@
-import type { GenerationGuideContent } from "./guideTypes";
+import type { GenerationGuideContent, GuideBlock } from "./guideTypes";
 
 export const GENERATION_GUIDE_KEY = "generation_guide";
 
@@ -23,7 +23,7 @@ export function sanitizeGuideContent(content: GenerationGuideContent): Generatio
 export const DEFAULT_GENERATION_GUIDE: GenerationGuideContent = {
   pageTitle: "Kaip tinkamai generuoti užduotis?",
   pageIntro:
-    "Trumpai apie generatoriaus skiltis. Jei generuojate pagal tekstą — kuo tiksliau aprašykite turinį. Jei nenorite rašyti ilgai — rinkitės „Pagal temą“ ir patvirtintą banką.",
+    "Trumpai apie generatoriaus skiltis. Pagrindinis generavimas kuria užduotis; 7–12 kl. atsakymus ir sprendimus dažnai gaunate antriniu generavimu (žr. žemiau). Jei generuojate pagal tekstą — aprašykite turinį tiksliai; jei nenorite ilgo teksto — rinkitės „Pagal temą“.",
   sections: [
     {
       id: "functions",
@@ -53,7 +53,7 @@ export const DEFAULT_GENERATION_GUIDE: GenerationGuideContent = {
           id: "grade",
           title: "Klasė",
           body:
-            "Pasirinkite 1–12 kl. atitinkantį mokinių amžių. Teksto režime AI gauna amžių, terminologiją ir formatą — ne visą programos aprašą. Turinį nurodo jūsų aprašymas.\n\n1–4 kl.: jei tai ne veiksmų eilutė, skaičiavimas pateikiamas stulpeliu arba dalyba kampu; atsakyme — tik skaičius (dalybai su liekana, pvz. „13 liek. 3“), be kampo ar trupmenos.",
+            "Pasirinkite 1–12 kl. atitinkantį mokinių amžių.\n\n1–6 kl.: AI sugeneruoja atsakymą kartu su užduotimi; jis rodomas tik paspaudus „Atsakymai“.\n7–12 kl.: pagrindinis generavimas dažniausiai be atsakymo; atsakymą ar sprendimą galite gauti antriniu generavimu (žr. skiltį „Antriniai generavimai“). Banko užduotys gali turėti paruoštą atsakymą — jis taip pat slepiamas iki „Atsakymai“.\n\n1–4 kl.: jei tai ne veiksmų eilutė, skaičiavimas stulpeliu arba dalyba kampu; atsakyme — tik skaičius (dalybai su liekana, pvz. „13 liek. 3“).",
         },
         {
           id: "difficulty",
@@ -65,7 +65,7 @@ export const DEFAULT_GENERATION_GUIDE: GenerationGuideContent = {
           id: "prompt-image",
           title: "Užduoties aprašymas ir nuotraukos įkėlimas",
           body:
-            "Rašykite kuo konkretesnį užduoties tipą ar temą. Galite įklijuoti pavyzdinę užduotį.\n\nNuotrauka (PRO): rekomenduojama po 1 užduotį. Norint panašaus uždavinio, pakanka nuotraukos — teksto nereikia (AI gauna tik nuotrauką ir instrukciją „Sukurk panašią užduotį“). Kelios skirtingos užduotys vienoje nuotraukoje dažnai duoda prastą rezultatą. Galima nuvilkti arba Ctrl+V.",
+            "Rašykite kuo konkretesnį užduoties tipą ar temą. Galite įklijuoti pavyzdinę užduotį.\n\nNuotrauka (PRO): rekomenduojama po 1 užduotį. Pakanka nuotraukos — teksto nereikia (AI gauna instrukciją „Sukurk panašią užduotį“). Atsakymas iš karto nesiunčiamas; 7–12 kl. galite generuoti atsakymą antriniu generavimu. Kelios skirtingos užduotys vienoje nuotraukoje dažnai duoda prastą rezultatą.",
         },
         {
           id: "diagram",
@@ -81,15 +81,15 @@ export const DEFAULT_GENERATION_GUIDE: GenerationGuideContent = {
         },
         {
           id: "solutions",
-          title: "Generuoti sprendimą",
+          title: "Antriniai generavimai",
           body:
-            "Tik teksto režime, 7 kl.+, sunkioms arba „įvairaus sudėtingumo“ sunkioms dalims. Temų režime sprendimai generuojami ne automatiškai; banko užduotyse sprendimas gali būti jau paruoštas.",
+            "Antriniai generavimai — veiksmai po užduoties sukūrimo: „Patikrinti užduotį“, „Generuoti atsakymą“ arba „Generuoti sprendimą ir atsakymą“. Skaičiuojami atskirai nuo pagrindinių generavimų (FREE 10/mėn., PRO 80/mėn., Unlimited neriboti).\n\n7–8 kl.: patikrinti užduotį + generuoti atsakymą (jei atsakymo dar nėra).\n9–10 kl.: lengvoms ir vidutinėms — patikrinti + atsakymas; sunkioms — sprendimas ir atsakymas.\n11–12 kl.: lengvoms — patikrinti + atsakymas; vidutinėms ir sunkioms — patikrinti + sprendimas ir atsakymas.\nĮvairaus sudėtingumo rinkinyje mygtukai priklauso nuo konkrečios užduoties lygio.\n\nBanko užduotys (pagal temą) jau patikrintos — „Patikrinti užduotį“ nėra. Jei banke yra atsakymas, generavimo mygtukai nerodomi.\nNuotraukos (7–12 kl.): tik „Generuoti atsakymą“, be patikros.\n\nJei patikrinimas ar generavimas jau pateikė atsakymą, atitinkamas mygtukas dingsta.",
         },
         {
           id: "after-generate",
           title: "Po generavimo",
           body:
-            "Galite rodyti atsakymus ir sprendimus, spausdinti, eksportuoti į Word (PRO), redaguoti užduotis (PRO). Mokytojai ir administratoriai gali palikti feedback ir patvirtinti / atmesti užduotis banke.",
+            "Atsakymai ir sprendimai rodomi paspaudus „Atsakymai“ / „Sprendimai“ (visos klasės vienodai). Galite spausdinti, eksportuoti į Word (PRO), redaguoti užduotis (PRO). Mokytojai ir administratoriai gali palikti feedback ir tvarkyti banką.",
         },
       ],
     },
@@ -117,12 +117,76 @@ export const DEFAULT_GENERATION_GUIDE: GenerationGuideContent = {
             "Taip — redaguoti, palikti feedback, patvirtinti ar atmesti; pataisymai gali būti išsaugomi banke.",
         },
         {
+          id: "faq-secondary",
+          title: "Kas yra antriniai generavimai?",
+          body:
+            "Tai ne pagrindinis užduočių generavimas, o papildomi AI veiksmai po sukūrimo: užduoties patikra (sąlygos korekcija), atsakymo generavimas arba glaustas sprendimas su atsakymu. Taikoma 7–12 kl. sugeneruotoms užduotims (ne banko). Vienas veiksmas = vienas antrinis kreditas. Limitai: FREE 10/mėn., PRO 80/mėn., Unlimited neriboti. Matote juos antraštėje kaip „Antriniai: X/Y“.",
+        },
+        {
           id: "faq-limits",
           title: "Kodėl nemoku planu mažai užduočių?",
           body:
-            "Nemokamas ir svečio planai riboja užklausas ir užduočių skaičių; PRO — didesni limitai ir papildomos funkcijos (nuotrauka, eksportas, redagavimas).",
+            "Nemokamas planas riboja pagrindines užklausas (3/d., 10/mėn.) ir antrinius generavimus (10/mėn.). PRO — didesni limitai ir papildomos funkcijos (nuotrauka, eksportas, redagavimas).",
         },
       ],
     },
   ],
 };
+
+/** Blokai, kurių turinį sinchronizuojame iš kodo (likę jūsų DB redagavimai lieka). */
+const GUIDE_SYNC_BLOCK_IDS = new Set([
+  "solutions",
+  "after-generate",
+  "faq-secondary",
+  "faq-limits",
+]);
+
+function collectBlocksMap(blocks: GuideBlock[], map = new Map<string, GuideBlock>()): Map<string, GuideBlock> {
+  for (const b of blocks) {
+    map.set(b.id, b);
+    if (b.children?.length) collectBlocksMap(b.children, map);
+  }
+  return map;
+}
+
+function syncBlocksFromMap(blocks: GuideBlock[], sourceMap: Map<string, GuideBlock>): GuideBlock[] {
+  return blocks.map((block) => {
+    let next = block;
+    if (GUIDE_SYNC_BLOCK_IDS.has(block.id) && sourceMap.has(block.id)) {
+      const src = sourceMap.get(block.id)!;
+      next = { ...block, title: src.title, body: src.body };
+    }
+    if (next.children?.length) {
+      next = { ...next, children: syncBlocksFromMap(next.children, sourceMap) };
+    }
+    return next;
+  });
+}
+
+/** Sujungia DB turinį su kodo numatytais: atnaujina antrinius generavimus, palieka kitus jūsų redagavimus. */
+export function mergeGuideWithDefaults(
+  content: GenerationGuideContent,
+  defaults: GenerationGuideContent = DEFAULT_GENERATION_GUIDE,
+): GenerationGuideContent {
+  const sourceMap = collectBlocksMap(defaults.sections.flatMap((s) => s.blocks));
+
+  const sections = content.sections.map((section) => {
+    let blocks = syncBlocksFromMap(section.blocks, sourceMap);
+
+    if (section.id === "faq" && !blocks.some((b) => b.id === "faq-secondary")) {
+      const secondary = sourceMap.get("faq-secondary");
+      if (secondary) {
+        const limitsIdx = blocks.findIndex((b) => b.id === "faq-limits");
+        const copy = structuredClone(secondary);
+        blocks =
+          limitsIdx >= 0
+            ? [...blocks.slice(0, limitsIdx), copy, ...blocks.slice(limitsIdx)]
+            : [...blocks, copy];
+      }
+    }
+
+    return { ...section, blocks };
+  });
+
+  return { ...content, sections };
+}

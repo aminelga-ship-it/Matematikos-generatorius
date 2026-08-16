@@ -59,6 +59,7 @@ export interface GenerateTasksMeta {
   fromBank: boolean;
   bankCount: number;
   aiCount: number;
+  aiModel?: string;
   deferredAnswers?: boolean;
 }
 
@@ -120,11 +121,14 @@ export async function generateTasks(
   }
 
   const meta =
-    typeof data.bankCount === "number" || typeof data.aiCount === "number"
+    typeof data.bankCount === "number" ||
+    typeof data.aiCount === "number" ||
+    typeof data.aiModel === "string"
       ? {
           fromBank: data.fromBank === true,
           bankCount: Number(data.bankCount) || 0,
-          aiCount: Number(data.aiCount) || 0,
+          aiCount: Number(data.aiCount) || (Array.isArray(data.tasks) ? data.tasks.length : 0),
+          aiModel: typeof data.aiModel === "string" ? data.aiModel : undefined,
           deferredAnswers: data.deferredAnswers === true,
         }
       : undefined;
@@ -170,6 +174,56 @@ export async function solveTaskAnswer(grade: number, question: string): Promise<
   return data.answer;
 }
 
+export interface TaskSolveFullResult {
+  answer: string;
+  solution: string;
+}
+
+export async function solveTaskFullAnswer(
+  grade: number,
+  question: string,
+): Promise<TaskSolveFullResult> {
+  const token = await getAccessToken();
+
+  const response = await fetch(GENERATE_TASKS_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      apikey: SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({
+      action: "solve",
+      solveMode: "full",
+      grade,
+      taskCount: 1,
+      prompt: "",
+      difficulty: "vidutinės",
+      question,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || data.error) {
+    if (data.code === "pro_limit") {
+      throw new ProLimitExhaustedError(
+        typeof data.error === "string" ? data.error : PRO_LIMIT_EXHAUSTED_MESSAGE,
+      );
+    }
+    throw new Error(data.error ?? `Klaida: ${response.status}`);
+  }
+
+  if (typeof data.answer !== "string" || !data.answer.trim()) {
+    throw new Error("Nepavyko gauti atsakymo.");
+  }
+
+  return {
+    answer: data.answer.trim(),
+    solution: typeof data.solution === "string" ? data.solution.trim() : "",
+  };
+}
+
 export interface TaskReviewResult {
   question: string;
   answer: string;
@@ -208,6 +262,11 @@ export async function reviewTaskQuestion(
   const data = await response.json();
 
   if (!response.ok || data.error) {
+    if (data.code === "pro_limit") {
+      throw new ProLimitExhaustedError(
+        typeof data.error === "string" ? data.error : PRO_LIMIT_EXHAUSTED_MESSAGE,
+      );
+    }
     throw new Error(data.error ?? `Klaida: ${response.status}`);
   }
 
@@ -255,6 +314,18 @@ export async function saveSession(
   }
 
   return data as MathSession;
+}
+
+export async function updateSessionTasks(sessionId: string, tasks: Task[]): Promise<void> {
+  const { error } = await supabase
+    .from("math_sessions")
+    .update({ tasks })
+    .eq("id", sessionId);
+
+  if (error) {
+    console.error("Failed to update session tasks:", error);
+    throw new Error("Nepavyko išsaugoti užduočių.");
+  }
 }
 
 export async function getRecentSessions(limit = 10): Promise<MathSession[]> {

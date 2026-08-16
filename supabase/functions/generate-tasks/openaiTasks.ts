@@ -24,7 +24,7 @@ export async function generateTasksViaOpenAI(params: {
   promptProfile?: SystemPromptProfile;
   topicSubtopicGuided?: boolean;
   omitAnswers?: boolean;
-}): Promise<{ tasks: Task[] } | { error: string }> {
+}): Promise<{ tasks: Task[]; model: string } | { error: string }> {
   const {
     openaiKey,
     grade,
@@ -51,6 +51,7 @@ export async function generateTasksViaOpenAI(params: {
   const effectiveIncludeSolutions = promptProfile === "image-only" ? false : includeSolutions;
 
   const model = selectModel(grade, difficulty, withDiagram, withGraph);
+  console.log("generate-tasks AI model:", model, { grade, difficulty, withDiagram, withGraph });
   const reasoning = isReasoningChatModel(model);
   let tokenLimit = effectiveIncludeSolutions
     ? 8000
@@ -146,7 +147,7 @@ export async function generateTasksViaOpenAI(params: {
     if (tasks.length === 0) {
       return { error: "AI negrąžino užduočių." };
     }
-    return { tasks };
+    return { tasks, model };
   } catch {
     console.error("Failed to parse AI response:", content);
     return { error: "Nepavyko apdoroti AI atsakymo. Bandykite dar kartą." };

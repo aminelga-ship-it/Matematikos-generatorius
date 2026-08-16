@@ -64,6 +64,7 @@ export function TeacherTaskFeedback({
 }: TeacherTaskFeedbackProps) {
   const [selected, setSelected] = useState<TaskFeedbackType | null>(null);
   const [comment, setComment] = useState("");
+  const [showComment, setShowComment] = useState(false);
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -101,21 +102,10 @@ export function TeacherTaskFeedback({
           ? await resolveCurriculumIdsForTask(taskIndex, subtopicIds, topicIds)
           : undefined;
       const result = await submitTaskFeedback(id, selected, comment, curriculum);
-      if (selected === "suitable" || selected === "excellent") {
-        setDone(
-          result === "approved"
-            ? selected === "excellent"
-              ? "Puiki užduotis — patvirtinta banke"
-              : "Patvirtinta banke — tinkama užduotis"
-            : "Įrašyta banke (redaguotinos) — admin priskirs temą ir potemę",
-        );
-      } else if (selected === "unsuitable") {
-        setDone("Užduotis pašalinta iš banko");
-      } else {
-        setDone(FEEDBACK_OPTIONS.find((o) => o.value === selected)?.label ?? "Išsaugota");
-      }
+      setDone("Ačiū už įvertinimą");
       setSelected(null);
       setComment("");
+      setShowComment(false);
       onResolved?.(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Klaida");
@@ -156,15 +146,29 @@ export function TeacherTaskFeedback({
           {sending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
           Siųsti
         </button>
+        <button
+          type="button"
+          disabled={sending}
+          onClick={() => setShowComment((v) => !v)}
+          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-medium transition shrink-0 ${
+            showComment
+              ? "border-indigo-300 bg-indigo-50 text-indigo-800"
+              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+          }`}
+        >
+          Komentuoti
+        </button>
       </div>
 
-      <textarea
-        value={comment}
-        onChange={(e) => setComment(e.target.value)}
-        placeholder="Neprivalomas komentaras…"
-        rows={1}
-        className="w-full text-[11px] px-2 py-1.5 border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-200"
-      />
+      {showComment && (
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Neprivalomas komentaras…"
+          rows={1}
+          className="w-full text-[11px] px-2 py-1.5 border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-200"
+        />
+      )}
 
       {done && (
         <p className="flex items-center gap-1 text-[11px] text-emerald-600">

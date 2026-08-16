@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { DEFAULT_GENERATION_GUIDE, GENERATION_GUIDE_KEY, sanitizeGuideContent } from "./guideContentDefaults";
+import { DEFAULT_GENERATION_GUIDE, GENERATION_GUIDE_KEY, mergeGuideWithDefaults, sanitizeGuideContent } from "./guideContentDefaults";
 import type { GenerationGuideContent } from "./guideTypes";
 
 function isGuideContent(v: unknown): v is GenerationGuideContent {
@@ -21,10 +21,10 @@ export async function fetchGenerationGuide(): Promise<GenerationGuideContent> {
   }
 
   if (data?.value && isGuideContent(data.value)) {
-    return sanitizeGuideContent(data.value);
+    return mergeGuideWithDefaults(sanitizeGuideContent(data.value));
   }
 
-  return sanitizeGuideContent(DEFAULT_GENERATION_GUIDE);
+  return mergeGuideWithDefaults(sanitizeGuideContent(DEFAULT_GENERATION_GUIDE));
 }
 
 export async function saveGenerationGuide(content: GenerationGuideContent): Promise<void> {

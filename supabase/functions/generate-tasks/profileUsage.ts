@@ -15,12 +15,14 @@ export type ProfileUsage = {
   requests_month?: number | null;
   tasks_month?: number | null;
   usage_month?: string | null;
+  secondary_month?: number | null;
 };
 
 function normalizePeriodCounters(profile: ProfileUsage): {
   requestsToday: number;
   requestsMonth: number;
   tasksMonth: number;
+  secondaryMonth: number;
   usageDay: string;
   usageMonth: string;
 } {
@@ -33,6 +35,7 @@ function normalizePeriodCounters(profile: ProfileUsage): {
     requestsToday: sameDay ? (profile.requests_today ?? 0) : 0,
     requestsMonth: sameMonth ? (profile.requests_month ?? profile.used_requests ?? 0) : 0,
     tasksMonth: sameMonth ? (profile.tasks_month ?? profile.used_tasks ?? 0) : 0,
+    secondaryMonth: sameMonth ? (profile.secondary_month ?? 0) : 0,
     usageDay: today,
     usageMonth: month,
   };
@@ -117,6 +120,49 @@ export async function incrementLoggedInUsage(
       usage_day: period.usageDay,
       requests_month: nextMonthReq,
       tasks_month: nextMonthTasks,
+      usage_month: period.usageMonth,
+    })
+    .eq("id", profile.id);
+}
+
+export function assertSecondaryWithinLimits(
+  profile: ProfileUsage,
+):
+  | { ok: true; period: ReturnType<typeof normalizePeriodCounters> }
+  | { ok: false; error: string; code?: "pro_limit" } {
+  const period = normalizePeriodCounters(profile);
+
+  if (profile.role === "admin" || profile.plan === "unlimited") {
+    return { ok: true, period };
+  }
+
+  const limit =
+    profile.plan === "pro"
+      ? PLAN_LIMITS.pro.maxSecondaryPerMonth
+      : PLAN_LIMITS.free.maxSecondaryPerMonth;
+
+  if (period.secondaryMonth >= limit) {
+    return {
+      ok: false,
+      error: PRO_LIMIT_EXHAUSTED_MESSAGE,
+      code: "pro_limit",
+    };
+  }
+
+  return { ok: true, period };
+}
+
+export async function incrementSecondaryUsage(
+  supabaseAdmin: SupabaseClient,
+  profile: ProfileUsage,
+  period: ReturnType<typeof normalizePeriodCounters>,
+): Promise<void> {
+  const nextSecondary = period.secondaryMonth + 1;
+
+  await supabaseAdmin
+    .from("profiles")
+    .update({
+      secondary_month: nextSecondary,
       usage_month: period.usageMonth,
     })
     .eq("id", profile.id);

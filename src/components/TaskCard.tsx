@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, CheckCircle, BookOpen, Pencil, Check, X, Sparkles, Loader2, ClipboardCheck } from "lucide-react";
+import { ChevronDown, ChevronUp, CheckCircle, BookOpen, Pencil, Check, X, Sparkles, Loader2, ClipboardCheck, Copy } from "lucide-react";
 import { MathText } from "./MathText";
 import { GeometryVisualizer } from "./GeometryVisualizer";
 import { GeoGebraGraph } from './GeoGebraGraph';
 import type { Task, Difficulty } from "../lib/types";
 import { fixDiagramQuestionText } from "../lib/fixDiagramQuestion";
+import { formatTaskForClipboard } from "../lib/formatTaskCopy";
+import { getTaskSecondaryActions } from "../lib/taskSecondaryActions";
 import { TeacherTaskFeedback } from "./TeacherTaskFeedback";
 
 interface TaskCardProps {
@@ -12,10 +14,11 @@ interface TaskCardProps {
   index: number;
   showAnswers: boolean;
   showSolutions: boolean;
-  grade10PilotMode?: boolean;
-  generatingAnswer?: boolean;
+  imageOnly?: boolean;
+  generatingSecondary?: "answer" | "full" | null;
   reviewingTask?: boolean;
   onGenerateAnswer?: (index: number, question: string) => void;
+  onGenerateSolutionAndAnswer?: (index: number, question: string) => void;
   onReviewTask?: (index: number, question: string) => void;
   canEdit?: boolean;
   onEdit?: (index: number, updated: Task) => void;
@@ -26,6 +29,8 @@ interface TaskCardProps {
   subtopicIds?: string[];
   onBankFeedback?: (index: number, result: "approved" | "draft" | "deleted") => void;
   onBankItemLinked?: (index: number, bankItemId: string) => void;
+  hideNumberBadge?: boolean;
+  displayNumber?: number;
 }
 
 // Split task question into sub-parts a), b), c) or A), B), C)… each on its own line.
@@ -107,25 +112,27 @@ const CARD_ACCENT_COLORS = [
   "border-l-indigo-500",
 ];
 
-export function TaskCard({ task, index, showAnswers, showSolutions, grade10PilotMode, generatingAnswer, reviewingTask, onGenerateAnswer, onReviewTask, canEdit, onEdit, showTeacherFeedback, grade, sessionDifficulty, topicIds, subtopicIds, onBankFeedback, onBankItemLinked }: TaskCardProps) {
+export function TaskCard({ task, index, showAnswers, showSolutions, imageOnly, generatingSecondary, reviewingTask, onGenerateAnswer, onGenerateSolutionAndAnswer, onReviewTask, canEdit, onEdit, showTeacherFeedback, grade, sessionDifficulty, topicIds, subtopicIds, onBankFeedback, onBankItemLinked, hideNumberBadge, displayNumber }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [draftQuestion, setDraftQuestion] = useState(task.question);
   const [draftFunctionEquation, setDraftFunctionEquation] = useState(task.function_equation ?? "");
   const [draftDiagramRemoved, setDraftDiagramRemoved] = useState(false);
 
   const hasAnswerText = (task.answer ?? "").trim().length > 0;
   const hasReviewNotes = (task.ai_review_notes ?? "").trim().length > 0;
-  const showAnswerBlock =
-    !editing && hasAnswerText && (grade10PilotMode || showAnswers);
+  const secondaryActions = grade
+    ? getTaskSecondaryActions(task, grade, sessionDifficulty, { imageOnly })
+    : { showReview: false, showGenerateAnswer: false, showGenerateSolutionAndAnswer: false };
+
+  const showAnswerBlock = !editing && hasAnswerText && showAnswers;
+  const showReviewButton = !editing && secondaryActions.showReview && onReviewTask;
   const showGenerateButton =
-    !editing &&
-    grade10PilotMode &&
-    !hasAnswerText &&
-    onGenerateAnswer;
-  const showReviewButton =
-    !editing && grade10PilotMode && onReviewTask;
-  const aiBusy = generatingAnswer || reviewingTask;
+    !editing && secondaryActions.showGenerateAnswer && onGenerateAnswer;
+  const showGenerateSolutionButton =
+    !editing && secondaryActions.showGenerateSolutionAndAnswer && onGenerateSolutionAndAnswer;
+  const aiBusy = reviewingTask || generatingSecondary != null;
 
   const hasGraph = Boolean(task.function_equation && task.function_equation.trim() !== "");
   const hasDiagram = Boolean(task.diagram_config && !draftDiagramRemoved);
@@ -168,6 +175,18 @@ export function TaskCard({ task, index, showAnswers, showSolutions, grade10Pilot
     setDraftDiagramRemoved(true);
   };
 
+  const handleCopyTask = async () => {
+    const copyIndex = displayNumber != null ? displayNumber - 1 : index;
+    const text = formatTaskForClipboard(copyIndex, subParts);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   return (
     <div
       className={`bg-white rounded-2xl border border-slate-100 border-l-4 ${accentColor} shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden`}
@@ -176,14 +195,16 @@ export function TaskCard({ task, index, showAnswers, showSolutions, grade10Pilot
       <div className="px-6 pt-5 pb-4">
         <div className="flex items-start gap-4">
           {/* Number badge */}
+          {!hideNumberBadge && (
           <div className="flex-shrink-0 flex flex-col items-center gap-0.5 pt-0.5">
             <span className="w-8 h-8 rounded-full bg-slate-800 text-white font-bold text-sm flex items-center justify-center shadow-sm">
-              {index + 1}
+              {displayNumber ?? index + 1}
             </span>
             <span className="text-[10px] font-semibold text-slate-300 uppercase tracking-widest mt-0.5">
               Nr.
             </span>
           </div>
+          )}
 
           {/* Question content */}
           <div className="flex-1 min-w-0 pt-0.5 space-y-1.5">
@@ -191,9 +212,9 @@ export function TaskCard({ task, index, showAnswers, showSolutions, grade10Pilot
               <div className="space-y-3">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                    Peržiūra
+                    Užduoties tekstas
                   </label>
-                  <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5 min-h-[3rem]">
+                  <div className="space-y-1.5">
                     {splitSubParts(draftQuestion).map((part, i) => (
                       <div key={i} className={part.label ? "flex items-baseline gap-2.5" : ""}>
                         {part.label && (
@@ -207,17 +228,17 @@ export function TaskCard({ task, index, showAnswers, showSolutions, grade10Pilot
                       </div>
                     ))}
                   </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                    Užduoties tekstas (LaTeX: $…$)
-                  </label>
-                  <textarea
-                    value={draftQuestion}
-                    onChange={(e) => setDraftQuestion(e.target.value)}
-                    rows={5}
-                    className="w-full px-3 py-2 text-sm font-mono text-slate-700 border border-slate-200 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  />
+                  <details className="mt-2 group" open>
+                    <summary className="text-[11px] font-medium text-slate-400 cursor-pointer hover:text-slate-600 select-none">
+                      LaTeX šaltinis (koreguojama užduotis)
+                    </summary>
+                    <textarea
+                      value={draftQuestion}
+                      onChange={(e) => setDraftQuestion(e.target.value)}
+                      rows={5}
+                      className="mt-2 w-full px-3 py-2 text-sm font-mono text-slate-700 border border-slate-200 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-blue-300"
+                    />
+                  </details>
                 </div>
                 {(hasGraph || draftFunctionEquation.trim() !== "") && (
                   <div>
@@ -294,19 +315,42 @@ export function TaskCard({ task, index, showAnswers, showSolutions, grade10Pilot
                   </div>
 
                   {canEdit && (
+                    <div className="flex flex-shrink-0 flex-col items-end gap-1 no-print">
+                      <button
+                        onClick={startEdit}
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition"
+                        title="Redaguoti užduotį"
+                      >
+                        <Pencil size={12} />
+                        Redaguoti
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyTask()}
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                        title="Kopijuoti užduotį"
+                      >
+                        {copied ? <Check size={12} /> : <Copy size={12} />}
+                        {copied ? "Nukopijuota" : "Kopijuoti"}
+                      </button>
+                    </div>
+                  )}
+                  {!canEdit && (
                     <button
-                      onClick={startEdit}
-                      className="flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition"
-                      title="Redaguoti užduotį"
+                      type="button"
+                      onClick={() => void handleCopyTask()}
+                      className="no-print flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                      title="Kopijuoti užduotį"
                     >
-                      <Pencil size={12} />
-                      Redaguoti
+                      {copied ? <Check size={12} /> : <Copy size={12} />}
+                      {copied ? "Nukopijuota" : "Kopijuoti"}
                     </button>
                   )}
                 </div>
 
                 {showTeacherFeedback && grade != null && (
-                  <TeacherTaskFeedback
+                  <div className="no-print">
+                    <TeacherTaskFeedback
                     bankItemId={task.bank_item_id}
                     grade={grade}
                     task={task}
@@ -317,6 +361,7 @@ export function TaskCard({ task, index, showAnswers, showSolutions, grade10Pilot
                     onBankItemLinked={(id) => onBankItemLinked?.(index, id)}
                     onResolved={(result) => onBankFeedback?.(index, result)}
                   />
+                  </div>
                 )}
               </>
             )}
@@ -335,9 +380,8 @@ export function TaskCard({ task, index, showAnswers, showSolutions, grade10Pilot
         )}
       </div>
 
-      {/* 10 kl. pilotas: patikra + atsakymas */}
-      {(showReviewButton || showGenerateButton) && (
-        <div className="mx-6 mb-4 space-y-3">
+      {(showReviewButton || showGenerateButton || showGenerateSolutionButton) && (
+        <div className="mx-6 mb-4 space-y-3 no-print">
           <div className="flex flex-col sm:flex-row gap-2 sm:items-start">
             {showReviewButton && (
               <div className="flex-1 min-w-0">
@@ -355,7 +399,7 @@ export function TaskCard({ task, index, showAnswers, showSolutions, grade10Pilot
                   {reviewingTask ? "Tikrinama…" : "Patikrinti užduotį"}
                 </button>
                 <p className="text-[11px] text-slate-400 mt-1.5">
-                  AI patikrina sugeneruotą užduotį ir jei reikia pataiso.
+                  AI patikrina užduotį ir jei reikia ją pataiso.
                 </p>
               </div>
             )}
@@ -367,22 +411,40 @@ export function TaskCard({ task, index, showAnswers, showSolutions, grade10Pilot
                   disabled={aiBusy}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100 transition disabled:opacity-60 w-full sm:w-auto"
                 >
-                  {generatingAnswer ? (
+                  {generatingSecondary === "answer" ? (
                     <Loader2 size={15} className="animate-spin" />
                   ) : (
                     <Sparkles size={15} />
                   )}
-                  {generatingAnswer ? "Generuojama…" : "Generuoti atsakymą"}
+                  {generatingSecondary === "answer" ? "Generuojama…" : "Generuoti atsakymą"}
                 </button>
-                <p className="text-[11px] text-slate-400 mt-1.5">
-                  Skaičiuojama kaip 1 generavimo užduotis.
-                </p>
+              </div>
+            )}
+            {showGenerateSolutionButton && (
+              <div className="flex-1 min-w-0">
+                <button
+                  type="button"
+                  onClick={() =>
+                    onGenerateSolutionAndAnswer?.(index, task.question.trim() || displayQuestion)
+                  }
+                  disabled={aiBusy}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 transition disabled:opacity-60 w-full sm:w-auto"
+                >
+                  {generatingSecondary === "full" ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <Sparkles size={15} />
+                  )}
+                  {generatingSecondary === "full"
+                    ? "Generuojama…"
+                    : "Generuoti sprendimą ir atsakymą"}
+                </button>
               </div>
             )}
           </div>
 
           {hasReviewNotes && (
-            <div className="px-4 py-3 bg-sky-50 rounded-xl border border-sky-100">
+            <div className="no-print px-4 py-3 bg-sky-50 rounded-xl border border-sky-100" data-ai-review-notes>
               <span className="text-[10px] font-bold text-sky-600 uppercase tracking-widest block leading-none mb-1.5">
                 AI rekomendacijos
               </span>
@@ -395,7 +457,7 @@ export function TaskCard({ task, index, showAnswers, showSolutions, grade10Pilot
       )}
 
       {showAnswerBlock && (
-        <div className="mx-6 mb-4 flex items-center gap-3 px-4 py-3 bg-emerald-50 rounded-xl border border-emerald-100">
+        <div className="task-answer-section mx-6 mb-4 flex items-center gap-3 px-4 py-3 bg-emerald-50 rounded-xl border border-emerald-100">
           <CheckCircle size={15} className="text-emerald-500 flex-shrink-0" />
           <div className="min-w-0">
             <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest block leading-none mb-1">
@@ -410,7 +472,7 @@ export function TaskCard({ task, index, showAnswers, showSolutions, grade10Pilot
 
       {/* Solution accordion */}
       {showSolutions && !editing && task.solution.trim().length > 0 && (
-        <div className="border-t border-slate-100">
+        <div className="task-solution-section border-t border-slate-100">
           <button
             onClick={() => setExpanded((p) => !p)}
             className={`w-full flex items-center gap-2 px-6 py-3 text-sm font-medium transition-colors ${

@@ -26,10 +26,12 @@ interface TasksViewProps {
   topicIds?: string[];
   subtopicIds?: string[];
   sourceHint?: string;
-  grade10PilotMode?: boolean;
-  generatingAnswerIndex?: number | null;
+  imageOnly?: boolean;
+  generatingSecondaryIndex?: number | null;
+  generatingSecondaryMode?: "answer" | "full" | null;
   reviewingTaskIndex?: number | null;
   onGenerateAnswer?: (index: number, question: string) => void;
+  onGenerateSolutionAndAnswer?: (index: number, question: string) => void;
   onReviewTask?: (index: number, question: string) => void;
   error?: string | null;
   proLimitExhausted?: boolean;
@@ -56,10 +58,12 @@ export function TasksView({
   topicIds,
   subtopicIds,
   sourceHint,
-  grade10PilotMode,
-  generatingAnswerIndex,
+  imageOnly,
+  generatingSecondaryIndex,
+  generatingSecondaryMode,
   reviewingTaskIndex,
   onGenerateAnswer,
+  onGenerateSolutionAndAnswer,
   onReviewTask,
   onBankFeedback,
   onBankItemLinked,
@@ -68,9 +72,6 @@ export function TasksView({
   onLimitTopUp,
 }: TasksViewProps) {
   const hasSolutions = tasksIncludeSolutions(tasks);
-
-  const hideGlobalAnswersToggle =
-    grade10PilotMode || (grade === 10 && tasks.some((t) => !(t.answer ?? "").trim()));
 
   return (
     <div className="space-y-5">
@@ -91,19 +92,17 @@ export function TasksView({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {!hideGlobalAnswersToggle && (
-            <button
-              onClick={onToggleAnswers}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
-                showAnswers
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                  : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
-              }`}
-            >
-              {showAnswers ? <Eye size={13} /> : <EyeOff size={13} />}
-              {showAnswers ? "Slėpti atsakymus" : "Atsakymai"}
-            </button>
-          )}
+          <button
+            onClick={onToggleAnswers}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
+              showAnswers
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+            }`}
+          >
+            {showAnswers ? <Eye size={13} /> : <EyeOff size={13} />}
+            {showAnswers ? "Slėpti atsakymus" : "Atsakymai"}
+          </button>
 
           {hasSolutions && (
             <button
@@ -193,10 +192,13 @@ export function TasksView({
             index={i}
             showAnswers={showAnswers}
             showSolutions={hasSolutions && showSolutions}
-            grade10PilotMode={grade10PilotMode}
-            generatingAnswer={generatingAnswerIndex === i}
+            imageOnly={imageOnly}
+            generatingSecondary={
+              generatingSecondaryIndex === i ? generatingSecondaryMode ?? null : null
+            }
             reviewingTask={reviewingTaskIndex === i}
             onGenerateAnswer={onGenerateAnswer}
+            onGenerateSolutionAndAnswer={onGenerateSolutionAndAnswer}
             onReviewTask={onReviewTask}
             canEdit={canEdit}
             onEdit={onEditTask}

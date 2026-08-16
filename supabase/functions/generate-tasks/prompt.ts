@@ -87,8 +87,7 @@ export function selectModel(
   }
 
   if (tier === "lengvos") return "gpt-4.1";
-  if (tier === "vidutinės") return "gpt-5.4";
-  return "o3";
+  return "gpt-5.4";
 }
 
 /** GPT-5 / o-serija: kita tokenų ir sampling parametrų schema. */
@@ -363,11 +362,13 @@ function buildImageOnlySystemPromptSuffix(
   taskCount: number,
   withDiagram: boolean,
   withGraph: boolean,
+  omitAnswers = false,
 ): string {
   const solutionField = `"solution":"",`;
+  const answerField = omitAnswers ? '"answer":"",' : '"answer":"…",';
   const jsonExample = withDiagram
-    ? `{"tasks":[{"question":"…","answer":"…",${solutionField}"diagram_config":{"type":"RIGHT_TRIANGLE","labels":{"a":"6 cm","b":"X","c":"10 cm"}}${withGraph ? ',"function_equation":"y=x^2-4"' : ""}}]}`
-    : `{"tasks":[{"question":"…","answer":"…",${solutionField}${withGraph ? '"function_equation":"y=2*x-1"' : ""}}]}`;
+    ? `{"tasks":[{"question":"…",${answerField}${solutionField}"diagram_config":{"type":"RIGHT_TRIANGLE","labels":{"a":"6 cm","b":"X","c":"10 cm"}}${withGraph ? ',"function_equation":"y=x^2-4"' : ""}}]}`
+    : `{"tasks":[{"question":"…",${answerField}${solutionField}${withGraph ? '"function_equation":"y=2*x-1"' : ""}}]}`;
 
   const diagramRule = withDiagram
     ? `Brėžinys: jei diagram_config — labels su duotais duomenimis ir "?".`
@@ -375,12 +376,15 @@ function buildImageOnlySystemPromptSuffix(
   const graphEquationRule = withGraph
     ? `Grafikas: "function_equation" jei užduotis apie funkciją.`
     : ``;
+  const answerRule = omitAnswers
+    ? `answer: VISADA tuščias "" (ne generuok atsakymų).`
+    : "";
 
   return `
 === Užduotis (${taskCount} užd.) ===
 Nukopijuok nuotraukos užduotį (panašią). LaTeX $...$ kur reikia.
 ${diagramRule}${graphEquationRule ? ` ${graphEquationRule}` : ""}
-Sprendimai: "solution"="" visur.
+Sprendimai: "solution"="" visur.${answerRule ? ` ${answerRule}` : ""}
 JSON (tiksliai ${taskCount}): ${jsonExample}`;
 }
 
@@ -397,7 +401,7 @@ export function buildSystemPrompt(
 ): string {
   if (profile === "image-only") {
     return getStaticSystemPromptPrefix(withDiagram, withGraph, grade) +
-      buildImageOnlySystemPromptSuffix(taskCount, withDiagram, withGraph);
+      buildImageOnlySystemPromptSuffix(taskCount, withDiagram, withGraph, omitAnswers);
   }
   return getStaticSystemPromptPrefix(withDiagram, withGraph, grade) +
     buildVariableSystemPromptSuffix(

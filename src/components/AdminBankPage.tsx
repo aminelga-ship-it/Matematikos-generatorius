@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, Copy, Loader2, Shield, X } from "lucide-react";
-import { fetchAdminBankItems, fetchBankStatusCounts, fetchCurriculumSubtopics, fetchCurriculumTopics, cloneBankItem, saveAndReviewBankItem, saveBankItemContent } from "../lib/bankApi";
+import { ArrowLeft, Check, Copy, Loader2, Shield, Trash2, X } from "lucide-react";
+import {
+  clearBankItemsByStatus,
+  fetchAdminBankItems,
+  fetchBankStatusCounts,
+  fetchCurriculumSubtopics,
+  fetchCurriculumTopics,
+  cloneBankItem,
+  saveAndReviewBankItem,
+  saveBankItemContent,
+} from "../lib/bankApi";
 import type {
   BankDifficulty,
   CurriculumSubtopic,
@@ -154,6 +163,7 @@ export function AdminBankPage({ onBack }: AdminBankPageProps) {
   const [curriculumByGrade, setCurriculumByGrade] = useState<Record<number, CurriculumCache>>({});
   const [curriculumLoadingGrade, setCurriculumLoadingGrade] = useState<number | null>(null);
   const [statusCounts, setStatusCounts] = useState<Record<TaskBankStatus, number> | null>(null);
+  const [clearing, setClearing] = useState(false);
   const curriculumByGradeRef = useRef(curriculumByGrade);
   curriculumByGradeRef.current = curriculumByGrade;
 
@@ -308,6 +318,31 @@ export function AdminBankPage({ onBack }: AdminBankPageProps) {
     }
   };
 
+  const clearCurrentStatus = async () => {
+    const label = STATUS_FILTERS.find((f) => f.value === statusFilter)?.label ?? statusFilter;
+    const count = statusCounts?.[statusFilter] ?? items.length;
+    if (count === 0) return;
+    const ok = window.confirm(
+      `Ištrinti visas ${count} „${label}" užduotis iš banko? Veiksmas negrįžtamas.`,
+    );
+    if (!ok) return;
+
+    setClearing(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const deleted = await clearBankItemsByStatus(statusFilter);
+      setExpandedId(null);
+      setDrafts({});
+      await load(statusFilter);
+      setSuccess(`Ištrinta ${deleted} užduotis (-ių) („${label}").`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nepavyko išvalyti.");
+    } finally {
+      setClearing(false);
+    }
+  };
+
   const cloneItem = async (item: TaskBankItemWithMeta) => {
     setBusyId(item.id);
     setError(null);
@@ -355,7 +390,7 @@ export function AdminBankPage({ onBack }: AdminBankPageProps) {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {STATUS_FILTERS.map((f) => (
             <button
               key={f.value}
@@ -374,6 +409,15 @@ export function AdminBankPage({ onBack }: AdminBankPageProps) {
               {statusCounts ? ` (${statusCounts[f.value]})` : ""}
             </button>
           ))}
+          <button
+            type="button"
+            disabled={clearing || loading || (statusCounts?.[statusFilter] ?? items.length) === 0}
+            onClick={() => void clearCurrentStatus()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-40 disabled:pointer-events-none transition"
+          >
+            {clearing ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            Clear
+          </button>
         </div>
       </div>
 

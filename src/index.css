@@ -68,6 +68,11 @@
     display: none !important;
   }
 
+  /* AI įvertinimas / rekomendacijos — ne spausdinime */
+  [data-ai-review-notes] {
+    display: none !important;
+  }
+
   body {
     background: white;
     font-family: 'Times New Roman', Georgia, serif;
@@ -99,6 +104,16 @@
     margin-bottom: 1.2em;
     border-bottom: 1px solid #ccc;
     padding-bottom: 0.8em;
+  }
+
+  /* Atsakymai ir sprendimai — ne spausdinime */
+  .task-answer-section,
+  .task-solution-section {
+    display: none !important;
+  }
+
+  [data-print-include="false"] {
+    display: none !important;
   }
 
   /* Show answers and solutions stripped for print */

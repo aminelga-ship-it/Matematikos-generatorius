@@ -120,7 +120,8 @@ export interface Task {
   diagram_config?: DiagramConfig;
   function_equation?: string;
   bank_item_id?: string;
-  /** AI patikros rekomendacijos (10 kl. pilotas) */
+  from_approved_bank?: boolean;
+  task_difficulty?: BankDifficulty;
   ai_review_notes?: string;
 }
 
@@ -140,6 +141,21 @@ export interface MathSession {
   topic_ids?: string[];
   subtopic_ids?: string[];
   created_at: string;
+}
+
+/** Užduotis spausdinimo sąraše (iš istorijos sesijos). */
+export interface CuratedPrintItem {
+  id: string;
+  sessionId: string;
+  sessionGrade: number;
+  sessionPrompt: string;
+  taskIndex: number;
+  task: Task;
+  enabled: boolean;
+}
+
+export function curatedPrintItemId(sessionId: string, taskIndex: number): string {
+  return `${sessionId}:${taskIndex}`;
 }
 
 /** Rotacija potemių/temų pagal užduoties indeksą (kaip banke). */

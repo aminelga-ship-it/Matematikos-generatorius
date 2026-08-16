@@ -52,6 +52,7 @@ function profileUsageLabel(profile: {
   requests_month?: number;
   tasks_month?: number;
   usage_month?: string | null;
+  secondary_month?: number;
 }): { primary: string; secondary: string } {
   const today = usageDayKey();
   const month = usageMonthKey();
@@ -64,16 +65,27 @@ function profileUsageLabel(profile: {
     profile.usage_month === month
       ? (profile.tasks_month ?? 0)
       : 0;
+  const secondaryMonth =
+    profile.usage_month === month
+      ? (profile.secondary_month ?? 0)
+      : 0;
+
+  if (profile.plan === "unlimited" || profile.role === "admin") {
+    return {
+      primary: "Neriboti generavimai",
+      secondary: "Antriniai: neriboti",
+    };
+  }
 
   if (profile.plan === "pro") {
     return {
       primary: `Užklausos: ${reqMonth}/100 (mėn.)`,
-      secondary: `Užduotys: ${tasksMonth}/300 (mėn.)`,
+      secondary: `Antriniai: ${secondaryMonth}/80 · Užduotys: ${tasksMonth}/300`,
     };
   }
   return {
     primary: `Šiandien: ${reqToday}/3`,
-    secondary: `Mėnuo: ${reqMonth}/10`,
+    secondary: `Mėnuo: ${reqMonth}/10 · Antriniai: ${secondaryMonth}/10`,
   };
 }
 

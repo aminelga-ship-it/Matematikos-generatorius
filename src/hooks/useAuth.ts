@@ -17,6 +17,7 @@ export interface Profile {
   requests_month?: number;
   tasks_month?: number;
   usage_month?: string | null;
+  secondary_month?: number;
   role: UserRole | null;
 }
 

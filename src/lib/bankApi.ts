@@ -407,6 +407,22 @@ export async function fetchAdminBankItems(options?: {
   });
 }
 
+/** Admin: ištrina visas banko užduotis su nurodytu statusu. */
+export async function clearBankItemsByStatus(status: TaskBankStatus): Promise<number> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Prisijunkite.");
+
+  const { count, error } = await supabase
+    .from("task_bank_items")
+    .delete({ count: "exact" })
+    .eq("status", status);
+
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
 export async function clearTaskBankFeedback(taskBankItemId: string): Promise<void> {
   const { error } = await supabase
     .from("task_bank_feedback")

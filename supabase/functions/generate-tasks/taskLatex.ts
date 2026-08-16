@@ -8,6 +8,8 @@ export interface Task {
   diagram_config?: DiagramConfig;
   function_equation?: string;
   bank_item_id?: string;
+  from_approved_bank?: boolean;
+  task_difficulty?: "lengvos" | "vidutinės" | "sunkios";
 }
 
 const UNIT_SUPERSCRIPT_RE =
@@ -248,6 +250,12 @@ export function fixTaskLatex(task: Task, grade?: number): Task {
   }
   if (task.bank_item_id) {
     fixed.bank_item_id = task.bank_item_id;
+  }
+  if (task.from_approved_bank) {
+    fixed.from_approved_bank = task.from_approved_bank;
+  }
+  if (task.task_difficulty) {
+    fixed.task_difficulty = task.task_difficulty;
   }
   return fixed;
 }

@@ -25,11 +25,111 @@ Sunki: raidinio iracionalaus reiškinio prastinimas, kai po šaknimi yra kvadrat
   },
   "11:laipsniai-ir-saknys": {
     title: "Laipsniai ir šaknys",
-    body: `Lengva: laipsnių su racionaliuoju rodikliu skaičiavimas taikant vieną savybę (vienodų pagrindų daugyba/dalyba, laipsnio kėlimas laipsniu, pvz. $27^{2/3}$); šaknies keitimas laipsniu su racionaliuoju rodikliu ir atvirkščiai ($a^{m/n}=\\sqrt[n]{a^m}$); paprastos šaknų savybės su skaičiais ($\\sqrt[n]{ab}$, $\\sqrt[n]{a/b}$).
+    body: `Lengva: laipsnių ir šaknų su racionaliuoju rodikliu skaičiavimas taikant 1-2 savybes (vienodų pagrindų daugyba/dalyba, laipsnio kėlimas laipsniu, neigiamas, trupmeninis laipsnio rodiklis ir pan. laipsnių savybės; šaknies keitimas laipsniu su racionaliuoju rodikliu ir atvirkščiai; paprastos šaknų savybės su skaičiais.
 
 Vidutinė: reiškinių prastinimas taikant kelias laipsnių/šaknų savybes iš eilės; daugiklio iškėlimas prieš šaknies ženklą ir įkėlimas po juo (su raidėmis, kai nurodytas kintamojo ženklas); $\\sqrt[2k]{a^{2k}}=|a|$ taikymas; kvadratų skirtumo formulė su laipsniais su racionaliuoju rodikliu (pvz. $(a^{1/2}+b^{1/2})(a^{1/2}-b^{1/2})$); laipsnio su racionaliuoju rodikliu apibrėžimo sritis.
 
-Sunki: kelių žingsnių raidiniai reiškiniai su trupmenomis ir laipsniais su racionaliuoju rodikliu; sumos/skirtumo kubas ir kubų sumos/skirtumo formulės ($a^3\\pm b^3$ skaidymas); laipsniai su iracionaliaisiais rodikliais (pvz. $3^{1+\\sqrt{2}}\\cdot 3^{1-\\sqrt{2}}$); kombinuoti skaičiuojami reiškiniai su skirtingais pagrindais, šaknimis ir neigiamais rodikliais.`,
+Sunki: kelių žingsnių raidiniai reiškiniai su trupmenomis ir laipsniais, šaknimis su racionaliuoju rodikliu; sumos/skirtumo kubas ir kubų sumos/skirtumo formulių tiesioginis taikymas; laipsniai su iracionaliaisiais rodikliais (pvz. $3^{1+\\sqrt{2}}\\cdot 3^{1-\\sqrt{2}}$); kombinuoti skaičiuojami reiškiniai su skirtingais pagrindais, šaknimis ir neigiamais rodikliais.`,
+  },
+  "11:logaritmai": {
+    title: "Logaritmai",
+    body: `Logaritmo apibrėžimas; gali būti dešimtainis $\\lg x$ ar natūralusis $\\ln x$ logaritmai; pagrindinės savybės; logaritmavimas ir antilogaritmavimas; įdėtiniai logaritmai; pagrindo keitimo formulė.
+
+Lengva: eksponentinę lygtį užrašyti logaritmine forma ir atvirkščiai; apskaičiuoti logaritminį reiškinį, kai rezultatas sveikasis skaičius ar paprasta trupmena; taikyti pagrindines savybes su paprastais skaičiais; nustatyti, ar skaičius priklauso $\\mathbb{N}$, $\\mathbb{Z}$, $\\mathbb{I}$ rinkiniams.
+
+Vidutinė: logaritmai su šaknimis, trupmeniniu pagrindu ar argumentu ($\\lg\\sqrt[5]{0.01}$, $\\log_{1/5}125$, $\\ln\\sqrt{e^2}$); rasti $x$, kai pagrindas ar argumentas — šaknis ar trupmena ($\\log_x 16=\\frac{1}{2}$); taikyti sandaugos ir dalmens savybes ($\\log_{15}3+\\log_{15}5$, $\\log_5 75-\\log_5 3$); paprasti įdėtiniai logaritmai ($\\log_2(\\log_2 16)$); pagrindinė tapatybė $a^{\\log_a b}$ ($2^{\\log_2 7}$, $10^{\\lg 8}$); logaritmavimas — išskaidyti $\\log_a\\frac{81x^2}{\\sqrt[3]{y}}$; antilogaritmavimas — iš $\\lg x=2\\lg y-\\lg z+0.5\\lg t$ išreikšti $x$.
+
+Sunki: kelių žingsnių skaičiuojami reiškiniai ($27^{-\\log_3 2}$, $\\sqrt{10^{2+\\lg 16}}$; sudėtingi įdėtiniai ir kombinuoti ($\\log_4(\\log_{16}256)+\\log_4 2$); skaičiuoti logaritmą per duotą reikšmę ($\\log_3 6.75$, kai $\\log_3 2=a$; $\\lg 112$, kai $\\lg 2=m$, $\\lg 7=n$); raidiniai — duota $x=\\frac{yz^3}{\\sqrt[5]{t}}$, užrašyti $\\log_a x$ per $\\log_a y$, $\\log_a z$, $\\log_a t$; sudėtingas logaritmavimas su dešimtainiais daugikliais ir šaknimis; pagrindo keitimas ir tapatybės patikrinimas.`,
+  },
+  "11:posukio-kampas-sinusas-ir-kosinusas-vienetinis-apskriti": {
+    title: "Posūkio kampas, sinusas ir kosinusas. Vienetinis apskritimas",
+    body: `Kampo radianų ir laipsnių vienetai; posūkio kampas vienetiniame apskritime; taškas $A_\\alpha(x;y)$, $\\sin\\alpha=y$, $\\cos\\alpha=x$; ketvirčiai; periodiškumas $2\\pi k$; $\\sin\\alpha$, $\\cos\\alpha$ reikšmių intervalas $[-1;1]$; ženklai ketvirčiuose; lyginimas ir eiliškumas reikšmių.
+
+Lengva: konvertuoti tarp laipsnių ir radianų standartiniais kampais; nustatyti kampą vienetiniame apskritime ($0$–$2\\pi$); rasti $\\sin\\alpha$, $\\cos\\alpha$ taško koordinatėse; apskaičiuoti paprastus reiškiniai su $30^\\circ$, $45^\\circ$, $60^\\circ$, $90^\\circ$, $\\pi$ ir pan.; nustatyti ketvirtį; patikrinti, ar lygtis $\\sin\\alpha=1.2$ gali būti teisinga.
+
+Vidutinė: kampai $>360^\\circ$ ar $<0$; rasti $\\alpha$ duotame intervale; laikrodžio / sukimosi kampai; geometrija su radianais (trikampiai, daugiakampiai); periodiškumas ($\\sin 1125^\\circ$, $\\cos(-23\\pi/2)$); rasti visus $\\alpha$ intervale, kai $\\sin\\alpha=-1$ ar $\\cos\\alpha=0$; nustatyti ženklą dideliems kampams; min/max reiškinio $a\\sin\\alpha+b$; rasti $\\sin\\alpha$ iš $\\cos\\alpha$ (ar atvirkščiai) nurodytame ketvirtyje.
+
+Sunki: abstraktūs kampų rinkiniai ($\\alpha=\\frac{\\pi k}{8}$); ketvirtis išraiškoms ($\\alpha-\\pi$, jei $\\alpha$ III ketv.); simetrija vienetiniame apskritime; lyginti $\\sin 3$ ir $\\cos 4$; rasti parametro $m$ reikšmes, kai $\\sin\\alpha=m+2$ gali būti teisinga; supaprastinti $| \\sin\\alpha|-\\sin\\alpha$, $\\sqrt{(2\\sin\\frac{\\pi}{4}-1)^2}$ pagal $\\alpha$ intervalą; sudėtingi reiškiniai su keliais kampais, redukcijos taisyklės`,
+  },
+  "11:arksinusas-ir-arkkosinusas": {
+    title: "Arksinusas ir arkkosinusas",
+    body: `$\\arcsin$ ir $\\arccos$ apibrėžimo sritis; pagrindinės savybės $\\sin(\\arcsin x)$, $\\arccos(\\cos x)$; $\\arccos(-b)=\\pi-\\arccos b$; lygtis $a\\sin\\alpha=m$, $a\\cos\\alpha=m$ — išreikšti $\\alpha$.
+
+Lengva: ar išraiška turi prasmę ($\\arcsin x$, $\\arccos x$); apskaičiuoti $\\arcsin$ / $\\arccos$ lentelės reikšmėms; patikrinti paprastas lygybes ($\\arccos 0=\\frac{\\pi}{2}$); taikyti $\\arccos(-b)=\\pi-\\arccos b$.
+
+Vidutinė: sumos ir skirtumai ($\\arcsin\\frac{\\sqrt3}{2}+\\arccos(-\\frac{\\sqrt2}{2})$); $\\arccos(\\cos(-\\frac{5\\pi}{6}))$, $\\sin(\\arcsin x+\\arcsin y)$ su duotais $x,y$; iš $0.5\\cos\\alpha=m-1$ rasti $\\alpha$; sudėtingi skaitmeniniai reiškiniai su keliais $\\arcsin$ / $\\arccos$.
+
+Sunki: kompozicijos $\\cos(\\arccos(-\\frac{1}{2})+\\arccos\\frac{\\sqrt3}{2})$; $\\sin^2(\\arcsin\\frac{\\sqrt3}{2})-\\cos^2(\\arccos\\frac{1}{2})$; logikos uždaviniai (jei $\\alpha,\\beta\\in[0;\\pi]$ ir $\\cos\\alpha=\\cos\\beta$, ar $\\alpha=\\beta$?); parametras $m$ — kada lygtis su $\\arcsin$ / $\\arccos$ turi sprendimą.`,
+  },
+  "11:tangentas-ir-jo-tiese-arktangentas": {
+    title: "Tangentas ir jo tiesė, arktangentas",
+    body: `Tangentas vienetiniame apskritime ($tg\\alpha=\\frac{y}{x}$); $arctg$ apibrėžimas ir sritis $(-\\frac{\\pi}{2};\\frac{\\pi}{2})$; $tg(arctg b)=b$; $arctg(-b)=-arctg b$; tangentas ir jo tiesė ant apskritimo.
+
+Lengva: rasti $tg\\alpha$ iš taško koordinačių; apskaičiuoti $tg$ standartiniais kampais (laipsniais ir radianais); paprasti $arctg$ reikšmės ($0$, $\\pm1$, $\\pm\\frac{\\sqrt3}{3}$, $\\pm\\sqrt3$); nustatyti $tg$ ženklą.
+
+Vidutinė: $tg$ dideliems ar neigiamais kampais; lyginti $tg$ reikšmes; rasti $tg\\alpha$ iš $\\sin\\alpha$ ar $\\cos\\alpha$ nurodytame ketvirtyje; rasti $\\alpha$ intervale, kai $tg\\alpha=-1$ ar $tg\\alpha=3$; supaprastinti $|tg\\alpha|-tg\\alpha$ duotame intervale; patikrinti lygybių teisingumą.
+
+Sunki: sudėtiniai reiškiniai su $arctg$, gali būti sin, cos, arccos, arcsin; parametrai ir intervalai su tangentu.`,
+  },
+  "11:skaiciu-seka": {
+    title: "Skaičių seka",
+    body: `$n$-tojo nario formulė $a_n$; rekurentinė formulė $a_{n+1}$; monotoniškumas; nelygybės su $n \\in \\mathbb{N}$; sekos nario numerio radimas.
+
+Lengva: užrašyti pirmus narius iš formulės ar teksto; apskaičiuoti $a_k$, $a_{n+1}$, $a_{2n-1}$; nustatyti, ar skaičius priklauso sekai; paprastas monotoniškumas ($a_n=3n-10$); 1–2 žingsnių rekurentinė seka.
+
+Vidutinė: seka žodžiais (dalikliai, kartotiniai, lyginiai/nelyginiai); nelygybės $a_n<b$ ar intervalas; teigiamų/neigiamų narių skaičius; rasti $n$, kai $a_n$ didžiausias ar mažiausias (kvadratinė $a_n$); rekurentinės su keliais žingsniais; paprasti tekstiniai.
+
+Sunki: periodinė rekurentinė seka; rasti $n$, kai skirtumas dviejų gretimų narių duotas; kombinuoti su nelygybėmis ir parametrais; neolimpiadiniai, bet kelių žingsnių uždaviniai.`,
+  },
+  "11:aritmetine-progresija": {
+    title: "Aritmetinė progresija",
+    body: `Aritmetinė progresija $(a_n)$; $a_n=a_1+d(n-1)$; rekurentinė $a_{n+1}=a_n+d$; skirtumas $d$; aritmetinės progresijos savybė $a_n=\\frac{a_{n-1}+a_{n+1}}{2}$; suma $S_n=\\frac{a_1+a_n}{2}\\cdot n$ ir $S_n=\\frac{2a_1+d(n-1)}{2}\\cdot n$; $a_n=S_n-S_{n-1}$.
+
+Lengva: pirmi nariai iš $a_1$ ir $d$; rasti $a_k$; įrodyti, kad formulė $a_n=3n-14$ yra AP; rasti $d$ ar $a_1$; įterpti skaičius tarp duotų; paprastas $S_n$ skaičiavimas.
+
+Vidutinė: lygčių sistemos rasti $a_1$, $d$ iš duotų narių; nelygybės ($a_n<b$, intervalas); tekstiniai (atstumas, alga, sportas); AP savybė — rasti trūkstamus narius; suma nuo $a_k$ iki $a_m$; rasti $n$ iš $S_n$.
+
+Sunki: sumos su kvadratu $a_n^2$ ar simetrija ($a_1+a_n$); lygtis su AP suma ($1+3+5+\\dots$); tekstiniai su keliais žingsniais (dviratininkai, knygos, daugiakampis); derinti AP su geometrija (trikampio kampai, kraštinės); ne olimpiadiniai.`,
+  },
+  "11:geometrine-progresija": {
+    title: "Geometrinė progresija",
+    body: `$(b_n)$; $b_n=b_1\\cdot q^{n-1}$; rekurentinė $b_{n+1}=b_n\\cdot q$; vardiklis $q$; geometrinė savybė $b_n^2=b_{n-1}\\cdot b_{n+1}$; procentinis pokytis: augimas $q=1+p$, mažėjimas $q=1-p$, lieka $\\frac{k}{m}$ dalies $\\Rightarrow q=\\frac{k}{m}$.
+
+Lengva: pirmi nariai; rasti $b_k$; įrodyti, kad $b_n=2\\cdot 3^n$ yra GP; rasti $q$ iš $b_1$, $b_3$; paprastas procentinis augimas (1–2 žingsniai).
+
+Vidutinė: rasti $n$, kai $b_n$ duotas (gali logaritmas); trūkstami nariai sekos viduryje; GP savybė ($b_1\\cdot b_3$, $b_2\\cdot b_4$); tekstiniai su procentais (alga, GDP, bakterijos, oro siurbimas).
+
+Sunki: keturi skaičiai AP→GP transformacija; įrodymas su logaritmais; lenktynių laikas (GP + AP); $b_n\\cdot b_m=b_k\\cdot b_l$ kai $m+n=k+l$; sudėtingi finansiniai ar fiziniai kontekstai; ne olimpiadiniai.`,
+  },
+  "11:nykstamoji-geometrine-progresija": {
+    title: "Nykstamoji geometrinė progresija",
+    body: `Begalinė progresija, $|q|<1$, $q\\neq 0$; visų narių suma $S=\\frac{b_1}{1-q}$; baigtinės sumos $S_n=\\frac{b_1(1-q^n)}{1-q}$; pasikartojančios dešimtainės trupmenos → paprastoji trupmena. Nenaudoti sigma sumos žymėjimo.
+
+Lengva: rasti $S$ iš $b_1$, $q$; suma iš užrašytos sekos ($5+2+\\frac{4}{5}+\\dots$); paversti pasikartojančią dešimtainę į paprastąją trupmeną; paprastas $S_n$.
+
+Vidutinė: rasti $q$, $b_1$ ar $S$ iš sąryšių; lygtis su begaline suma; tekstiniai (kritimas, šuoliai, lėtėjimas); geometriniai modeliai (apskritimai).
+
+Sunki: $S_n$ ir $S$ santykis; dvi nykstančios progresijos su sąryšiais; nelygybė $S_n$ skiriasi nuo $S$ ne daugiau kaip 1 %; kombinuoti su šaknimis ir dideliais laipsniais; lygtis su begaline suma; tekstiniai (kritimas, šuoliai, lėtėjimas); geometriniai modeliai (apskritimai). Ne olimpiadiniai.`,
+  },
+  "11:Savybės": {
+    title: "Savybės",
+    body: `Savybės iš grafiko ir iš funkcijos formulės. Apibrėžimo sritis (šaknies, vardiklis $\\neq 0$, logaritmo), reikšmių sritis, lyginumas, periodinė ar ne, monotoniškumas, pastovaus ženklo intervalai, tolydi ar ne, sudėtinės funkcijos (pvz. užrašyti $f(g(x))$), funkcijos apibrėžtos keliais reiškiniais (sistemomis, kai $x>a$ ir $x<a$); ribų skaičiavimas, vienpusės ribos iš kairės ir dešinės; funkcijos nuliai, kur kerta abscisių ir ordinačių ašis. Draudžiama klausti apie asimptotes (terminas nevartojamas), išvestinės, integralai.
+
+Lengva: apibrėžimo sritis viena sąlyga, paprasta kvadratinė šaknis, nelyginio laipsnio šaknis ($f(x)=\\frac{3x+2}{2}$, $\\sqrt{5x-2}$, $\\sqrt[3]{3x-2}$); reikšmių sritis tiesinei ($x-3$); nuliai ir kirtimas su $Ox$, $Oy$ ($x^2-4$, $(x-1)(x+2)$); lyginumas iš paprasto grafiko ar daugianario; didžiausia/mažiausia reikšmė iš paprasto tolydaus grafiko; užrašyti $f(g(x))$ su paprastomis $f$, $g$; riba įstatymu ($\\lim_{x\\to 3}(2x^2+4x+1)$).
+
+Vidutinė: apibrėžimo sritis su keliomis sąlygomis — kvadratinis vardiklis, dvi šaknys, šaknis ir modulis, logaritmas ir šaknis ($\\frac{2x-5}{x^2+3x}$, $\\frac{\\sqrt{x-3}}{\\sqrt{5-x}}$, $\\frac{\\sqrt{5x-2}}{|x-3|}$, $\\log_3(x-2)+\\sqrt{2x-4}$, $\\sqrt{x+3}+\\frac{x+2}{x-5}$); reikšmių sritis parabolei ar šakniai ($8-x^2$, $x^2-5x+6$, $\\sqrt{x}-3$); lyginumas algebriškai ($\\sqrt{x}-3$, $|x|x^5+x$, $\\frac{x^2-2}{x^4+3}$); dalimis apibrėžta (2 dalys) — brėžti, rasti trūkio tašką; iš grafiko — monotoniškumas, periodiškumas ($T$), pastovaus ženklo intervalai, vienpusės ribos; riba $0/0$ skaidant ($\\lim_{x\\to 2}\\frac{x-2}{x^2+x-6}$); lentelė, kai $x$ artėja prie taško.
+
+Sunki: apibrėžimo sritis su keliomis skirtingomis sąlygomis ($\\frac{3}{x}-\\frac{2x+1}{\\sqrt{x-2}}$, $\\frac{\\sqrt[4]{-x}}{x^2-4}$, $\\sqrt{4-\\frac{2}{x}}$, $\\frac{x^2+6}{\\log_2(3x+2)}$); visapusiška funkcijos analizė; ribos racionalizuojant ($\\lim_{x\\to 0}\\frac{\\sqrt{x+1}-1}{x}$); sudėtinė + dalimis apibrėžta + vienpusės ribos algebraiškai. Ne olimpiadiniai, BMP lygyje.`,
+  },
+  "11:transformacijos": {
+    title: "Transformacijos",
+    body: `Pagrindinė formulė $y=a\\cdot f(b(x+c))+d$. $a$ — atstumai iki $Ox$; $b$ — atstumai iki $Oy$. c — pastūmimas į šonus,  $d$ — į viršų ar žemyn. Bazė dažniausiai $f(x)=x^2$, $|x|$, arba duotas grafikas / taškai.
+
+Lengva: viena transformacija — pastūmimas į šonus arba aukštyn/žemyn; simetrija $y=-f(x)$, $y=f(-x)$; taško naujos koordinatės ($A(-3;5)$ po $g(x)=f(x)+10$ ar $f(x-1)$); atpažinti paprastą pastūmimą iš eskizo arba paklausti kaip pasikeitė pradinis grafikas jei pvz. f(x) patapo f(x+3)-1.
+
+Vidutinė: galimos bet kokios 2-3 transformacijos; užrašyti formulę iš aprašymo ($x^2$ 6 į kairę ir 3 į viršų) ir $D(g)$, $E(g)$; atpažinti $(x+1)^2$ iš $x^2+2x+1$, kvadrato papildymas ($x^2-4x+3$); nuliai ir ašių kirtimas po $f(3x)$, $-5f(x)$; $D(f)$, $E(f)$ ir monotoniškumas po $-f(x)$ ar $f(x-2)+1$; taškas po kombinuota ($f(x-1)-5$); $g(x)=af(b(x+c))+d$ koeficientai iš dviejų grafikų; brėžti $|x+2|+1$, $5-|x-6|$; lygtis per pastūmimą ($(x-5)^2-(x-5)-12=0$, kai žinomi $x^2-x-12=0$ šaknys).
+
+Sunki: 3-4 transformacijos iš karto — $g(x)=af(bx)$ iš grafikų (rasti $a$, $b$); atvirkštinis taškas: $A(a;b)$ ant $f$ virsta $A'(3;6)$ ant $y=2f(x+1)-4$; kelių žingsnių $-0.25(x+2)^2-2$, $-(2x+4)^2+2$; $-f(-x)$ ir $\\frac12 f(x+2)-1$ iš dalimis grafiko; plotas po $5-|x-6|$ ir palyginimas su $2f$, $3f$, $0.5f$; geometrija — stačiakampis po $y=9-x^2$, kaip horizontalus tempimas keičia ploto formulę. Ne olimpiadiniai.`,
   },
   "8:tiesioginis-proporcingumas": {
     title: "Tiesioginis proporcingumas",

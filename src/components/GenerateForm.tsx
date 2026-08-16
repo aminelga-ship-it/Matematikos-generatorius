@@ -13,7 +13,6 @@ interface GenerateFormProps {
   imagePreview: string | null;
   withDiagram: boolean;
   withGraph: boolean;
-  withSolution: boolean;
   loading: boolean;
   canUploadImage: boolean;
   maxTasksPerGeneration: number;
@@ -25,7 +24,6 @@ interface GenerateFormProps {
   onImageChange: (base64: string | null) => void;
   onWithDiagramChange: (v: boolean) => void;
   onWithGraphChange: (v: boolean) => void;
-  onWithSolutionChange: (v: boolean) => void;
   onSubmit: () => void;
   onLockedAction: (featureName: string) => void;
   selectedSubtopicIds: string[];
@@ -131,7 +129,6 @@ export function GenerateForm({
   imagePreview,
   withDiagram,
   withGraph,
-  withSolution,
   loading,
   canUploadImage,
   maxTasksPerGeneration,
@@ -143,7 +140,6 @@ export function GenerateForm({
   onImageChange,
   onWithDiagramChange,
   onWithGraphChange,
-  onWithSolutionChange,
   onSubmit,
   onLockedAction,
   selectedSubtopicIds,
@@ -191,10 +187,6 @@ export function GenerateForm({
   const difficultyOptions = DIFFICULTIES;
   const isIvairusDifficulty =
     difficulty === "ivairus" || difficulty === "savarankiskas";
-  const canRequestAiSolution =
-    !isTopicMode &&
-    grade >= 7 &&
-    (difficulty === "sunkios" || difficulty === "ivairus");
   const canSubmit =
     !loading &&
     (isTopicMode
@@ -532,17 +524,6 @@ export function GenerateForm({
             )}
           </div>
 
-          {canRequestAiSolution && (
-            <label className="flex items-center gap-2.5 cursor-pointer select-none sm:flex-shrink-0">
-              <input
-                type="checkbox"
-                checked={withSolution}
-                onChange={(e) => onWithSolutionChange(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300"
-              />
-              <span className="text-sm text-slate-600 font-medium">Generuoti sprendimą (tik sunkioms)</span>
-            </label>
-          )}
         </div>
       </div>
       )}
