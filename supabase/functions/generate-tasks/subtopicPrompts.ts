@@ -6,6 +6,29 @@ export type SubtopicPromptEntry = {
   body: string;
 };
 
+/** Trumpas savybių + transformacijų branduolys 11 kl. konkrečioms funkcijoms (laipsninė, šaknies, …). Ne visos Savybės/Transformacijos potemės — tik žodynas. */
+const GRADE11_FUNKCIJA_CORE = `VIENA užduotis = VIENAS tikslas. DRAUDŽIAMA: eskizas + visos savybės ($D$, $E$, lyginumas, monotoniškumas, ženklai, nuliai, $Ox$/$Oy$) + transformacijos + taškai — tai per ilga net sunkiam. Pasirink TIK 1-3 savybes arba 2–3 transformacijas; ARBA 2 taškai. Gali prašyti nubraižyti eskizą ir paklausti kelių savybių. Žemiau esantys pavyzdžiai, skirtingų užduočių tipai, ne vienos užduoties punktai. Nenaudoti terminų: asimptotė, amplitudė.`;
+
+const GRADE11_LYGTYS_CORE = `VIENA užduotis = VIENA lygtis (ar viena sistema), 1-2 punktai. Žemiau tipai — atskiros užduotys, ne vienos užduoties sąrašas. Sprendinius tikrinti. Nenaudoti: asimptotė, amplitudė.`;
+
+const GRADE11_NELYGYBES_CORE = `VIENA užduotis = VIENA nelygybė, dviguba nelygybė arba viena nelygybių sistema; maks. 2 punktai. Atsakymas intervalais (arba konkretus skaičius / natūralus $n$ tekstiniame). Sistemos tik $$\\begin{cases} ... \\\\ ... \\end{cases}$$ (ne \\{ su kableliu ar \\n).`;
+
+const GRADE12_TRIG_TAPATYBIU_CORE = `VIENA užduotis = vienas tikslas (suprastinti, apskaičiuoti, išreikšti arba įrodyti); maks. 2 punktai. Rašyk $\\tg$, ne $\\tan$. Kampas $\\alpha$ arba $x$; laipsniai arba radianai (vienas formatas užduotyje). Pagrindinės: $\\sin^2\\alpha+\\cos^2\\alpha=1$; $\\tg\\alpha=\\frac{\\sin\\alpha}{\\cos\\alpha}$; $\\tg^2\\alpha+1=\\frac{1}{\\cos^2\\alpha}$ ($\\cos\\alpha\\neq 0$).`;
+
+const GRADE12_TRIG_LYGTYS_CORE = `VIENA užduotis = VIENA lygtis; 1-2 punktai. Bendrinis sprendinys su $k\\in\\mathbb{Z}$ (tangentui periodas $\\pi$). Rašyk $\\tg$, ne $\\tan$`;
+
+const GRADE12_TRIG_NELYGYBES_CORE = `VIENA užduotis = VIENA nelygybė; 1-2 punktai. Atsakymas intervalais su $+2\\pi k$ ($k\\in\\mathbb{Z}$); tangentui $+\\pi k$. Rašyk $\\tg$, ne $\\tan$. Žemiau galimi tipai`;
+
+const GRADE12_ISVESTINE_SKAICIAVIMAS_CORE = `VIENA užduotis = vienas tikslas; 1-2 punktai.; nekopijuoti pavyzdžių - jie skirti geriau suprasti lygį ir tipą.`;
+
+const GRADE12_STEREOMETRIJA_CORE = `VIENA užduotis = vienas tikslas; 1-2 punktai. Užduotys tinkamos 18 metų mokiniams (12 kl., VBE lygis). Aprašyk figūrą tekste (kubas $ABCDA_1B_1C_1D_1$, piramidė $SABCD$, prizmė…). Brėžinių NEGENERUOK — diagram_config nenaudoti. Pasviroji, statmuo, projekcija — žodžiuose arba LaTeX. Atsakymas su vienetais ($\\text{cm}^2$, $\\text{cm}^3$); $\\pi$ palik, jei reikia. Neatkartok pavyzdinių sąlygų — nauji skaičiai ir formulavimas.`;
+
+const GRADE12_KOMBINATORIKA_CORE = `VIENA užduotis = vienas tikslas; 1-2 punktai. Užduotys tinkamos 18 metų mokiniams (12 kl., VBE lygis). Kombinatorika — skaičiuoti variantus ($P_n$, $A_n^k$, $C_n^k$); Neatkartok pavyzdinių sąlygų.`;
+
+const GRADE12_TIKIMYBE_CORE = `VIENA užduotis = vienas tikslas; 1-2 punktai. Užduotys tinkamos 18 metų mokiniams (12 kl., VBE lygis). Klasikinė tikimybė $P(A)=\\frac{m}{n}$ — $m$ palankių, $n$ elementarių baigčių. Kombinatorika gali būti tarpinis žingsnis. Neatkartok pavyzdinių sąlygų.`;
+
+const GRADE12_SKIRSTINIAI_CORE = `VIENA užduotis = vienas tikslas; maksimum 2 punktai. Užduotys tinkamos 18 metų mokiniams (12 kl., VBE lygis). Diskretus atsitiktinis dydis $X$. Skirstinį pateik kaip duomenis ($X$: reikšmės; $P(X)$: tikimybės) ne lentele. Skirstiniams patikrink $\\sum p_i=1$. Neatkartok pavyzdinių sąlygų.`;
+
 const SUBTOPIC_PROMPTS: Record<string, SubtopicPromptEntry> = {
   "11:aibes": {
     title: "Aibės",
@@ -113,23 +136,362 @@ Sunki: $S_n$ ir $S$ santykis; dvi nykstančios progresijos su sąryšiais; nelyg
   },
   "11:Savybės": {
     title: "Savybės",
-    body: `Savybės iš grafiko ir iš funkcijos formulės. Apibrėžimo sritis (šaknies, vardiklis $\\neq 0$, logaritmo), reikšmių sritis, lyginumas, periodinė ar ne, monotoniškumas, pastovaus ženklo intervalai, tolydi ar ne, sudėtinės funkcijos (pvz. užrašyti $f(g(x))$), funkcijos apibrėžtos keliais reiškiniais (sistemomis, kai $x>a$ ir $x<a$); ribų skaičiavimas, vienpusės ribos iš kairės ir dešinės; funkcijos nuliai, kur kerta abscisių ir ordinačių ašis. Draudžiama klausti apie asimptotes (terminas nevartojamas), išvestinės, integralai.
+    body: `Savybės iš grafiko ir iš funkcijos formulės. Grafikų ir lentelių NEBRAIŽYK — liepk mokiniui nubraižyti; taškus rašyk tekste. Apibrėžimo sritis (šaknies, vardiklis $\\neq 0$, logaritmo), reikšmių sritis, lyginumas, periodinė ar ne, monotoniškumas, pastovaus ženklo intervalai, tolydi ar ne, sudėtinės funkcijos (pvz. užrašyti $f(g(x))$), funkcijos apibrėžtos keliais reiškiniais (sistemomis, kai $x>a$ ir $x<a$); ribų skaičiavimas, vienpusės ribos iš kairės ir dešinės; funkcijos nuliai, kur kerta abscisių ir ordinačių ašis. Draudžiama klausti apie asimptotes ir amplitudę (terminai nevartojami), išvestinės, integralai.
 
 Lengva: apibrėžimo sritis viena sąlyga, paprasta kvadratinė šaknis, nelyginio laipsnio šaknis ($f(x)=\\frac{3x+2}{2}$, $\\sqrt{5x-2}$, $\\sqrt[3]{3x-2}$); reikšmių sritis tiesinei ($x-3$); nuliai ir kirtimas su $Ox$, $Oy$ ($x^2-4$, $(x-1)(x+2)$); lyginumas iš paprasto grafiko ar daugianario; didžiausia/mažiausia reikšmė iš paprasto tolydaus grafiko; užrašyti $f(g(x))$ su paprastomis $f$, $g$; riba įstatymu ($\\lim_{x\\to 3}(2x^2+4x+1)$).
 
 Vidutinė: apibrėžimo sritis su keliomis sąlygomis — kvadratinis vardiklis, dvi šaknys, šaknis ir modulis, logaritmas ir šaknis ($\\frac{2x-5}{x^2+3x}$, $\\frac{\\sqrt{x-3}}{\\sqrt{5-x}}$, $\\frac{\\sqrt{5x-2}}{|x-3|}$, $\\log_3(x-2)+\\sqrt{2x-4}$, $\\sqrt{x+3}+\\frac{x+2}{x-5}$); reikšmių sritis parabolei ar šakniai ($8-x^2$, $x^2-5x+6$, $\\sqrt{x}-3$); lyginumas algebriškai ($\\sqrt{x}-3$, $|x|x^5+x$, $\\frac{x^2-2}{x^4+3}$); dalimis apibrėžta (2 dalys) — brėžti, rasti trūkio tašką; iš grafiko — monotoniškumas, periodiškumas ($T$), pastovaus ženklo intervalai, vienpusės ribos; riba $0/0$ skaidant ($\\lim_{x\\to 2}\\frac{x-2}{x^2+x-6}$); lentelė, kai $x$ artėja prie taško.
 
-Sunki: apibrėžimo sritis su keliomis skirtingomis sąlygomis ($\\frac{3}{x}-\\frac{2x+1}{\\sqrt{x-2}}$, $\\frac{\\sqrt[4]{-x}}{x^2-4}$, $\\sqrt{4-\\frac{2}{x}}$, $\\frac{x^2+6}{\\log_2(3x+2)}$); visapusiška funkcijos analizė; ribos racionalizuojant ($\\lim_{x\\to 0}\\frac{\\sqrt{x+1}-1}{x}$); sudėtinė + dalimis apibrėžta + vienpusės ribos algebraiškai. Ne olimpiadiniai, BMP lygyje.`,
+Sunki: apibrėžimo sritis su keliomis skirtingomis sąlygomis ($\\frac{3}{x}-\\frac{2x+1}{\\sqrt{x-2}}$, $\\frac{\\sqrt[4]{-x}}{x^2-4}$, $\\sqrt{4-\\frac{2}{x}}$, $\\frac{x^2+6}{\\log_2(3x+2)}$); vienoje užduotyje 1–2 savybės (ne visos iš karto); ribos racionalizuojant ($\\lim_{x\\to 0}\\frac{\\sqrt{x+1}-1}{x}$). Ne olimpiadiniai, BMP lygyje.`,
   },
   "11:transformacijos": {
     title: "Transformacijos",
-    body: `Pagrindinė formulė $y=a\\cdot f(b(x+c))+d$. $a$ — atstumai iki $Ox$; $b$ — atstumai iki $Oy$. c — pastūmimas į šonus,  $d$ — į viršų ar žemyn. Bazė dažniausiai $f(x)=x^2$, $|x|$, arba duotas grafikas / taškai.
+    body: `Pagrindinė formulė $y=a\\cdot f(b(x+c))+d$. $a$ — atstumai iki $Ox$; $b$ — atstumai iki $Oy$. $c$ — pastūmimas į šonus, $d$ — į viršų ar žemyn. Bazė dažniausiai $f(x)=x^2$, $|x|$, arba aprašyti taškai. Grafikų ir lentelių NEBRAIŽYK — liepk mokiniui nubraižyti.
 
 Lengva: viena transformacija — pastūmimas į šonus arba aukštyn/žemyn; simetrija $y=-f(x)$, $y=f(-x)$; taško naujos koordinatės ($A(-3;5)$ po $g(x)=f(x)+10$ ar $f(x-1)$); atpažinti paprastą pastūmimą iš eskizo arba paklausti kaip pasikeitė pradinis grafikas jei pvz. f(x) patapo f(x+3)-1.
 
-Vidutinė: galimos bet kokios 2-3 transformacijos; užrašyti formulę iš aprašymo ($x^2$ 6 į kairę ir 3 į viršų) ir $D(g)$, $E(g)$; atpažinti $(x+1)^2$ iš $x^2+2x+1$, kvadrato papildymas ($x^2-4x+3$); nuliai ir ašių kirtimas po $f(3x)$, $-5f(x)$; $D(f)$, $E(f)$ ir monotoniškumas po $-f(x)$ ar $f(x-2)+1$; taškas po kombinuota ($f(x-1)-5$); $g(x)=af(b(x+c))+d$ koeficientai iš dviejų grafikų; brėžti $|x+2|+1$, $5-|x-6|$; lygtis per pastūmimą ($(x-5)^2-(x-5)-12=0$, kai žinomi $x^2-x-12=0$ šaknys).
+Vidutinė: 2–3 transformacijos (be savybių paketo); užrašyti formulę iš aprašymo ($x^2$ 6 į kairę ir 3 į viršų) ARBA tik $D(g)$, $E(g)$; atpažinti $(x+1)^2$ iš $x^2+2x+1$; nuliai po $f(3x)$; taškas po $f(x-1)-5$; lygtis per pastūmimą ($(x-5)^2-(x-5)-12=0$, kai žinomi $x^2-x-12=0$ šaknys).
 
 Sunki: 3-4 transformacijos iš karto — $g(x)=af(bx)$ iš grafikų (rasti $a$, $b$); atvirkštinis taškas: $A(a;b)$ ant $f$ virsta $A'(3;6)$ ant $y=2f(x+1)-4$; kelių žingsnių $-0.25(x+2)^2-2$, $-(2x+4)^2+2$; $-f(-x)$ ir $\\frac12 f(x+2)-1$ iš dalimis grafiko; plotas po $5-|x-6|$ ir palyginimas su $2f$, $3f$, $0.5f$; geometrija — stačiakampis po $y=9-x^2$, kaip horizontalus tempimas keičia ploto formulę. Ne olimpiadiniai.`,
+  },
+  "11:laipsnine": {
+    title: "Laipsninė",
+    body: `${GRADE11_FUNKCIJA_CORE}
+
+Laipsninė $f(x)=ax^n$ ($n$ sveikasis ar racionalusis); transformuota $a\\bigl(k(x-p)\\bigr)^n+q$; hiperbolė $\\frac{k}{x+c}+d$.
+
+Lengva: reikšmės ($f(x)=x^3$, $g(x)=x^4$, $f(\\sqrt{3})\\cdot g(-2)$); palyginti $x^{2024}$ ir $x^{2025}$ taškuose; ar reiškinys laipsninė ir užrašyti $ax^n$ ($2x^2\\cdot 4x^3$, $\\frac{3x^5}{2x^2}$); rasti $n$ ar $a$ iš vieno taško ($x^n$ eina per $B(2;8)$); paprastas pastūmimas („$x^4$ dviem į dešinę ir trimis į viršų“).
+
+Vidutinė: didėjanti/mažėjanti ($x^5$, $-0.6x^4$, $3x^6$); ketvirčiai pagal $n$ lyginumą ir $a$ ženklą; $a$, $b$ iš aprašyto grafiko (taškai žodžiu); $D(f)$, $E(f)$ ($3(x-12)^4-7$, $\\frac{4}{x+1}-3$); išvardyti transformacijas $g(x)=4\\bigl(3(x+2)\\bigr)^4-6$ nuo $x^4$; hiperbolė — $k$, $c$, $d$ iš pastūmimų ir taško.
+
+Sunki: kaip vidutinė + 1 žingsnis. Keli taškai per $2\\bigl(\\frac14(x+4)\\bigr)^2-3$; $\\frac{11x+12}{x}$ į $\\frac{k}{x}+d$; palyginti $\\frac{1}{x^2}$ ir $6-\\frac{1}{(x+4)^2}$; liepk nubraižyti ir rasti kiek sprendinių vienai lygčiai ($x^5=32$); trumpas tekstinis $I=\\frac{k}{l^2}$ arba $V=\\frac{4}{3}\\pi R^3$.`,
+  },
+  "11:saknies": {
+    title: "Šaknies",
+    body: `${GRADE11_FUNKCIJA_CORE}
+
+Šaknies funkcija $\\sqrt{x}$, $\\sqrt[3]{x}$, $\\sqrt[n]{x}$; transformuota $a\\sqrt{b(x+c)}+d$.
+
+Lengva: reikšmės ($f(x)=\\sqrt{x}$, $g(x)=\\sqrt[3]{x}$, $f(9)+g(27)$); $D(f)$, $E(f)$ paprastai ($\\sqrt{x+1}$, $\\sqrt[3]{x-3}$); $a$ iš taško ($a\\sqrt{x}$ eina per $A(4;6)$); vienas pastūmimas ($\\sqrt{x}$ 3 į kairę ir 5 žemyn).
+
+Vidutinė: $D(f)$ lyginio/nelyginio laipsnio šakniai, $\\sqrt{4x^2-16}$, $\\sqrt[6]{\\frac{6}{x-1}}$; lyginumas ($\\sqrt{x}-2$, $5+\\sqrt[3]{x}$, $\\sqrt{x^2+1}$); didėjanti/mažėjanti ($3\\sqrt{x}$, $-4\\sqrt{x}$); 2–3 transformacijos į formulę; $k$ iš taško ($k\\sqrt{x-2}$); pagal aprašytą grafiką atskirti $\\sqrt{x-2}$ ir $\\sqrt{-x+2}$.
+
+Sunki: kaip vidutinė + 1 žingsnis. $a,b,c,d$ iš aprašyto grafiko (pradžia, taškas); $D(f)$ su dviem šaknimis (viena funkcija); liepk nubraižyti ir grafiškai išspręsti vieną nelygybę ($\\sqrt[3]{x+1}<x-5$); trumpas tekstinis $T=2\\pi\\sqrt{l/g}$ (1–2 klausimai). Ne $g$ iš $f$ su 4 keistais koeficientais, ne a–t $D(f)$ sąrašai.`,
+  },
+  "11:rodikline": {
+    title: "Rodiklinė",
+    body: `${GRADE11_FUNKCIJA_CORE}
+
+Rodiklinė $f(x)=a^x$ ($a>0$, $a\\neq 1$); $e^x$; transformuota $k\\cdot a^{b(x+c)}+d$. Ne laipsninė ($x^n$, $2x^e$).
+
+Lengva: ar rodiklinė ir didėjanti/mažėjanti ($4^x$, $(2/3)^x$, $e^x$ vs $2x^e$, $x^{-4}$); reikšmės $x=-2,0,3$ ($3^x$, $(1/4)^{-x}$); palyginti $3^{0.5}$ ir $3^5$; $a$ iš vieno taško ($a^x$ per $A(4;4)$).
+
+Vidutinė: iš reikšmių tekste (ne lentelė) — tiesinė ar rodiklinė; $k$ ir $p$, jei $3.2^k<3.2^p$; $D(f)$, $E(f)$ ($-1.5^x$, $10^{-x}$, $(2/3)^x$); 2–3 transformacijos ($2\\cdot 3^x-4$, $6^{x-2}+3$); pagal taškus $(0;1)$, $(1;5)$ atskirti $5^x$ ir $(1/4)^x$.
+
+Sunki: kaip vidutinė + 1 žingsnis. Lyginumas ($7^{|x|}$, $5^{x^2+2}$); min/max per rodiklį ($(\\frac14)^{x^2-4x}$); $s(x)=-\\frac12\\cdot 5^{2(x-4)}+3$ transformacijos; liepk nubraižyti ir kiek sprendinių $3^x=2-x$; trumpas tekstinis (bakterijos, $K(t)=30\\cdot 1.149^t$, indėlis) — 1–2 klausimai, ne paskolos 4 dalys.`,
+  },
+  "11:logaritmine": {
+    title: "Logaritminė",
+    body: `${GRADE11_FUNKCIJA_CORE}
+
+Logaritminė $\\log_a x$, $\\lg$, $\\ln$; transformuota $k\\log_a\\bigl(b(x+c)\\bigr)+d$.
+
+Lengva: didėjanti/mažėjanti pagal pagrindą ($\\log_{0.02}x$, $\\log_{1.01}x$); ženklo nustatymas ($\\log_7 0.5$, $\\ln(1/e)$); $D(f)$ linijiniam argumentui; paprastas pastūmimas; ar taškas priklauso ($B(2\\sqrt{2};2)$ ir $\\log_{\\sqrt{2}}x$).
+
+Vidutinė: $D(f)$ kvadratui ar paprastai trupmenai ($\\log_4(x^2+4)$, $\\log_2\\frac{x^2+x+6}{9-x^2}$ — viena funkcija); $a$ iš taškų $(1;0)$ ir $(2;1)$; 2–3 transformacijos; $\\log_a 4>\\log_a 5$ — rasti $a$; liepk nubraižyti $\\log_2 x$ ir $\\sqrt{x}$, kiek susikirtimų.
+
+Sunki: kaip vidutinė + 1 žingsnis. $D(f)$ su logaritmu ir šaknimi (viena funkcija, ne a–t sąrašas); formulė iš dviejų taškų; $k,b,c,d$ iš aprašyto grafiko; trumpas tekstinis (Richteris $M=\\lg(I/I_0)$, radiocarbon $M=-8267\\ln(K/K_0)$) — 1 skaičiavimas. Ne tapatybės įrodymas su 4 grafikais.`,
+  },
+  "11:trigonometrines": {
+    title: "Trigonometrinės",
+    body: `${GRADE11_FUNKCIJA_CORE}
+
+$\\sin x$, $\\cos x$, $\\mathrm{tg}\\, x$ (radianai); $y=a\\sin\\bigl(b(x+c)\\bigr)+d$ (koeficientas $a$ — didž./maž. reikšmės, periodas, pastūmimai).
+
+Lengva: $D(f)$ be apribojimų ($\\sin x+10$, $3\\sin x-2$); $E(f)$ ir min/max ($3\\sin x$, $3-\\sin x$); paprastas pastūmimas; liepk nubraižyti ir grafiškai $\\sin x=\\frac{\\sqrt{2}}{2}$ intervale $[0;2\\pi]$.
+
+Vidutinė: $D(f)$ su vardikliu ar šaknimi ($\\frac{2}{\\sin x}$, $3-\\sqrt{\\sin x}$, $\\mathrm{tg}(x+\\frac{\\pi}{3})$); $E(f)$ ($8\\cos(x-\\frac{\\pi}{3})-1$); periodas $\\sin(3x)$, $-\\cos(0.5x)$; lyginumas paprastai; $a$, $b$ iš aprašytos bangos (didž./maž. reikšmės ir $T$); 2 transformacijos.
+
+Sunki: kaip vidutinė + 1 žingsnis. $D(f)$ vienai kombinuotai ($\\sqrt{\\cos x-\\sin x}$ arba $\\frac{2}{1-\\cos x}$); $a,b,c,d$ iš aprašytos bangos (min, max, $T$, pastūmimas); žodinė 3–4 transformacijų seka nuo $\\cos x$; liepk nubraižyti ir vieną nelygybę ($\\sin x>\\frac{\\sqrt{3}}{2}$). Ne a–u $D(f)$ sąrašai, ne dalimis + 5 lygtys.`,
+  },
+  "11:11-lygtys:su-parametru": {
+    title: "Su parametru",
+    body: `${GRADE11_LYGTYS_CORE}
+
+Parametras $p$ (ar $k,m$). Tipai: tiesinė $px+b=0$, $ax+p=0$, $(p+2)x=p-1$; kvadratinė $px^2+bx+c=0$, $ax^2+px+c=0$, $ax^2+bx+p=0$. Kai $x^2$ koeficientas priklauso nuo $p$ — pirmiausia atvejis $=0$ (tampa tiesine).
+
+Lengva: tiesinė su $p$ ($px-5x=4$, $(p+2)x=p-1$) — rasti $x$ arba su kuriomis $p$ yra 1 / 0 / be galo daug sprendinių.
+
+Vidutinė: tiesinė, kai $p$ koeficientai kvadratiniai ($(p^2-4)x=p+2$); kvadratinė su pastoviu $x^2$ nariu — $D(p)$, kiek sprendinių ($D>0$, $=0$, $<0$), pvz. $x^2-(p-1)x+4=0$.
+
+Sunki: kvadratinės lygtys su sudėtingesniais parametrais. Jokių olimpiadinių.`,
+  },
+  "11:11-lygtys:iracionaliosios": {
+    title: "Iracionaliosios",
+    body: `${GRADE11_LYGTYS_CORE}
+
+Tipai: $\\sqrt[n]{f(x)}=a$; $\\sqrt{f(x)}=g(x)$; $\\sqrt{f(x)}=\\sqrt{g(x)}+a$ arba $\\sqrt{f}+\\sqrt{g}=c$; $f(x)\\cdot\\sqrt[n]{g(x)}=0$.
+
+Lengva: viena šaknis = skaičius ($\\sqrt{2x-1}=6$, $\\sqrt[3]{3x-4}=-2$, $\\sqrt[4]{5x+6}=2$); gali nebūti sprendinių ($\\sqrt{\\ldots}=-2$).
+
+Vidutinė: $\\sqrt{f}=g$ ($\\sqrt{x+2}=x$, $\\sqrt{4-x}=x+2$); sandauga $=0$ ($(x-5)\\sqrt{x^2-7x-8}=0$); funkcijos nuliai ($6-\\sqrt{7x+2}$); susikirtimas $\\sqrt{3x+7}=x-1$.
+
+Sunki: Dvi šaknys ($\\sqrt{x+2}=2+\\sqrt{x-6}$, $\\sqrt{x}+\\sqrt{25-x}=5$); keitimas $\\sqrt[4]{x}=y$ ($\\sqrt{x}-\\sqrt[4]{x}-6=0$); įrodyti, kad nėra sprendinių pagal $D$. Ne begalinės sandaugos`,
+  },
+  "11:11-lygtys:rodiklines": {
+    title: "Rodiklinės",
+    body: `${GRADE11_LYGTYS_CORE}
+
+Tipai: $a^x=b$; $a^{f(x)}=a^{g(x)}$; $a^{x+c}+a^{x+d}=t$; $a^{2x}+a^x+t=0$ (keitimas $u=a^x$). $a>0$, $a\\neq 1$, $b>0$.
+
+Lengva: tas pats pagrindas ($3^{5x+1}=9^{2x}$, $8^{x+1}\\cdot 8^{2x}=1$); $a^x=b$ ($e^x=2$); paprastas keitimas ($7^{2x}-6\\cdot 7^x-7=0$).
+
+Vidutinė: iškėlimas ($7^{x-1}+3\\cdot 7^x=154$); šaknis rodiklyje ($2^{\\sqrt{x-5}}=8$); $f(x)=g(x)$ ($0.6^{x^2-10}=(5/3)^x$); trumpas procentinis ($25000$ mažėja $20\\%$ — kada $10240$).
+
+Sunki: keitimas su $a^{-x}$ ($5^x-24=25/5^x$, $3^x+3^{1-x}=4$); GP sąlyga ($5^x,5^x+1,5^x+3$); tekstinis, kai $t$ per $\\log$ / $\\ln$. Ne 4 dalių paskola.`,
+  },
+  "11:11-lygtys:logaritmines": {
+    title: "Logaritminės",
+    body: `${GRADE11_LYGTYS_CORE}
+
+Tipai: $\\log_a x=b$; $\\log_a f(x)=b$; $\\log_a f+\\log_a g=b$; $\\log_a^2 x+\\log_a x+t=0$ (keitimas $y=\\log_a x$). $a>0$, $a\\neq 1$; argumentas $>0$. Savybės: suma, skirtumas, $n\\log_a x$.
+
+Lengva: $\\log_a x=b$ ($\\log_3 x=4$, $\\log_{1/3}x=-3$); linijinis argumentas ($\\log_4(4-5x)=2$); sulyginti argumentus ($\\log_3(2x+18)=\\log_3 24$).
+
+Vidutinė: kvadratinis ar trupmeninis argumentas; $\\log_x A=b$; savybės ($\\lg(3-x)-\\lg(x+2)=2\\lg 2$); keitimas ($2\\log_3^2 x-7\\log_3 x=-3$).
+
+Sunki: naudojamos logaritmų savybės pertvarkant lygtį ir tik tada sprendžiama lygtis. Pagrindo keitimas; 1-3 įdėtiniai $\\log_2(\\log_5 x)=1$.`,
+  },
+  "11:11-lygtys:su-moduliu": {
+    title: "Su moduliu",
+    body: `${GRADE11_LYGTYS_CORE}
+
+Tipai: $|f(x)|=a$ ($a\\ge 0$; jei $a<0$ — nėra sprendinių); $|f(x)|=g(x)$ (tikrinti $g\\ge 0$). $f$, $g$ — reiškiniai.
+
+Lengva: $|ax+b|=c$ ($|x-3|=6$, $|x|=-1$); daugiklis prieš modulį ($4|-3x+8|=28$).
+
+Vidutinė: kvadratas modulyje ($|x^2-5x|=6$); $|f|=g$ linijiniam $g$ ($|2x-7|=4-3x$); $\\sqrt{(ax+b)^2}=|ax+b|$ tapatybė; nuliai $|4x-7|-1=0$; intervalas žodžiu ($|x-a|=b$).
+
+Sunki: $|f(x)|=g(x)$; gali būti $|\\sqrt{\\ldots}-c|=d$; $\\log_a|f(x)|=c$ arba $|\\log_a f(x)|=c$ — viena lygtis. Ne 3 modulių suma + ekvivalentumo 4 poros.`,
+  },
+  "11:11-lygtys:lygciu-sistemos": {
+    title: "Lygčių sistemos",
+    body: `${GRADE11_LYGTYS_CORE}
+
+Sistema tik $$\\begin{cases} ... \\\\ ... \\end{cases}$$ (tarp lygčių \\\\ , ne \\n ir ne kablelis vienoje eilutėje). 2 nežinomieji (tiesinė+kvadratinė, $xy$, $1/x$, apskritimas) arba 3 tiesinės $x,y,z$. Būdai: sudėtis, keitimas, naujas nežinomasis. Sprendinys — pora arba trejetas.
+
+Lengva: išreikšti $x$ per $y$ ($2x+5=6y$); ar pora tinka; viena sveikoji pora; 1 tiesinė, 1 kvadratinė lygtis.
+
+Vidutinė: tiesinė + apskritimas / parabolė; Šaknys sistemoje ar paprasta rodiklinė funkcija; $1/x=t$, $1/y=k$; simetrinė $x+y=t$, $xy=k$. Grafikas — gali liepti nubraižyti ir nuskaityti susikirtimą.
+
+Sunki: tiesinė sistema su trimis nežinomaisiais ir trimis lygtimis. Šaknys sistemoje; tiesinė + apskritimas; rodiklinė / logaritminė pora ($\\log_2 x+\\log_2 y=2$); trumpas tekstinis (2–3 nežinomieji).`,
+  },
+  "11:11-nelygybes:aukstesnes-nei-2-laipsnio": {
+    title: "Aukštesnės nei 2 laipsnio nelygybės",
+    body: `${GRADE11_NELYGYBES_CORE}
+
+Intervalų metodo sprendimas: lygtis $=0$, nuliai, ženklų lentelė, nelygybės atsakymai. Užduočių tipai: Kubinės / keturtinės — skaidyti dauginamaisiais (išskelti bendrą dauginį, grupavimas, greitoji daugyba).
+
+Lengva: jau skaidyta forma $(x-a)(x-b)(x-c)>0$, $x(x-2)(3-x)\\ge 0$; ar $x$ tenkina nelygybę? ($x=2$ ir $(x-3)(x+5)(x+6)>0$); paprasti nuliai, 2–3 intervalai.
+
+Vidutinė: prieš sprendimą skaidyti dauginamaisiais, sutraukti; vienas koeficientas su minusu ($(3-x)$, $(a-x)$) arba $(x^2-4)(9-x^2)\\ge 0$ arba keturi nuliai.
+
+Sunki: lyginis kartotumas ($x^2(x-1)^2(x-4)\\ge 0$ — izoliuoti taškai $\\{0,1\\}\\cup[4;+\\infty)$); $x^2(x^2-2x+1)(x-4)\\ge 0$; rasti didž. / maž. sveikąjį sprendinį; trumpas tekstinis su kubiniu modeliu ($-2x^3+96x^2-270x>0$ — natūralūs $x$). Ne olimpiadiniai.`,
+  },
+  "11:11-nelygybes:racionaliosios": {
+    title: "Racionaliosios",
+    body: `${GRADE11_NELYGYBES_CORE}
+
+Tipai: $\\frac{f(x)}{g(x)}>0$ ($g\\neq 0$); $\\frac{f}{g}\\ge 0$; lyginimas su skaičiumi ($\\frac{2}{x-3}>1$, $\\frac{x}{x+2}<-3$); kelios trupmenos abiejose pusėse; kubinis / kvadratinis numeratorius ($\\frac{x^3-7x-6}{x^2-4}\\ge 0$). $D$: vardiklis $\\neq 0$; su šakniimi / log — bendra $D$.
+
+Lengva: $\\frac{x-a}{x-b}>0$, $\\frac{x(x+8)}{5-x}\\le 0$; $\\frac{1}{x}>8$; $\\frac{x-5}{2-x}>0$; rasti didž. natūralųjį sprendinį.
+
+Vidutinė: perkelti į vieną pusę, bendras vardiklis; $\\frac{x}{x-3}\\le\\frac{2}{x}$; $\\frac{2x-1}{x+1}<\\frac{3x+2}{x-1}$; $D(f)$ su šaknim ir logaritmu ($\\sqrt{\\frac{x+2}{x-3}}+\\sqrt{x}$, $\\log_2\\frac{x}{2x+10}$); trumpas tekstinis (kuro sąnaudos, kainos intervalas).
+
+Sunki: kelios trupmenos; tekstinis su kvadratine pelno / užsakymų funkcija ($P(x)=-0.1x^2+50x-2640$); parametras — su kuriomis $m$ sprendinys teigiamas.`,
+  },
+  "11:11-nelygybes:sistemos": {
+    title: "Sistemos",
+    body: `${GRADE11_NELYGYBES_CORE}
+
+Dviguba nelygybė $a<f(x)<b$ (tiesinė arba kvadratinė). Sistemos: 2–3 nelygybės, sankirta. Gali būti $D(f)$ kaip sistema ($\\lg(x+2)>0$ ir $\\sqrt{10-x}$).
+
+Lengva: 2 sunkios tiesinės; dviguba tiesinė ($-6<-3(x+2)<2$); ar duotas skaičius tenkina duotą sudėtingesnę nelygybę?
+
+Vidutinė: tiesinė + racionalioji / kvadratinė; dviguba kvadratinė ($4<x^2\\le 9$, $1\\le x^2\\le 4$); 3 tiesinės $x,y,z$ arba 2 su trupmena; $\\{x^2-5x+6<0,\\ x^2+3x-4>0\\}$.
+
+Sunki: 3 nelygybės ($\\{x+2>\\frac{x}{3},\\ -x+2<0,\\ 2x-1<x+3\\}$); dviguba su šaknim ar dar kokia įdomesne funkcija ($2<(x-\\sqrt{7})(x+\\sqrt{7})<9$); $0<x^2+2x-24<11$; lygtis + nelygybė ($\\{|2x-y|=5,\\ \\ldots\\}$); $D$ sudėtinga ($\\frac{\\lg(x+2)}{\\sqrt{10-x}}$).`,
+  },
+  "11:11-nelygybes:su-moduliu": {
+    title: "Su moduliu",
+    body: `${GRADE11_NELYGYBES_CORE}
+
+Tipai: 1) $|f(x)|<>a$; 2) $\\sqrt{(f(x))^2}<>a$; 3) $|f|<>g$ — tikrinti $g\\ge 0$. Gali būti grafiškai.
+
+Lengva: 1) tipas — $f$ tiesinė arba kvadratinė; 2) tipas — paprasta $f$ ir skaičiai.
+
+Vidutinė: 2) tipas — sudėtingesnė $f$ (kvadratinė po šakni, aukštas laipsnis); 3) tipas — $g$ tiesinė.
+
+Sunki: 3) tipas — $f$ ir $g$ įvairios (tiesinė ir kvadratinė, dvi tiesinės). Gali gautis ne tradicinis atsakymas.`,
+  },
+  "11:11-nelygybes:rodiklines": {
+    title: "Rodiklinės",
+    body: `${GRADE11_NELYGYBES_CORE}
+
+Tipai: 1) $a^{f(x)}<>a^{g(x)}$ — vienodas pagrindas ($a>1$ ženklas tas pats, $0<a<1$ keičiasi); 2) $a^{f(x)}<>b$; 3) $a^{f(x)}<>b^{g(x)}$ skirtingi pagrindai — sutapatinti; 4) $u=a^x$; 5) $|f(x)|$ rodiklyje; 7) $D(f)$ su rodikline; 8) sistema; 9) parametras $a$; 10) tekstinis augimas / mažėjimas.
+
+Lengva: 1) — $f,g$ linijiniai, aiškus pagrindas; 2) — be sprendinių ar visi $\\mathbb{R}$; 3) — lengvai susivienodina.
+
+Vidutinė: 1) — $f$ kvadratinis arba modulis rodiklyje; 2) su logaritmu; 3) — keli žingsniai, sunkiai susivienodina pagrindai; 5)— viena duota rodiklinė; 7) — paprasta $D$.
+
+Sunki: 8) 10); progresija rodiklyje — retai, kombinuoti uždaviniai su kitom temom (transformacijos, nelygybės su moduliu, racionaliosios ar laipsninės nelygybės)`,
+  },
+  "11:11-nelygybes:logaritmines": {
+    title: "Logaritminės",
+    body: `${GRADE11_NELYGYBES_CORE}
+
+Tipai: 1) $\\log_a f(x)<>\\log_a g(x)$ — $f,g>0$; $a>1$ / $0<a<1$ taisyklė; 2) $\\log_a f(x)<>b$ — argumentas $>0$; 3) savybės (suma, skirtumas, $n\\log$) prieš sprendimą; 4) $| \\log |$ arba modulis argumente; 5) trupmeninis argumentas; 6) sistema; 7) $D(f)$ / kur $f(x)>0$; 8) kombinuota (log + šaknis / trupmena); 9) tekstinis; 10) maž. / didž. sveikasis sprendinys.
+
+Lengva: 1) — linijinis argumentas; 2) — $b$ sveikas; pagrindas $>1$ ar aiškus $<1$.
+
+Vidutinė: 2) — kvadratinis / trupmeninis argumentas; 3); 4); 5); 7); 10).
+
+Sunki: 3) daug savybių; 5); 6); 7); 8); 9).`,
+  },
+  "12:12-trigonometrija:tapatybes": {
+    title: "Tapatybės",
+    body: `${GRADE12_TRIG_TAPATYBIU_CORE}
+
+Tipai: 1) Suprastinti su $\\sin^2\\alpha+\\cos^2\\alpha=1$, $\\tg\\alpha$, $\\tg^2\\alpha+1=\\frac{1}{\\cos^2\\alpha}$; 2) Suprastinti trigonometrinius reiškinius su trupmenomis (galimas bendravardiklinimas, skaidymu dauginamaisiais, greitoji daugyba ir pan. algebra); 3) Rasti $\\sin$, $\\cos$, $\\tg$ duoto ketvirčio — duota viena funkcija; 4) Tiksli reikšmė sumos/skirtumo ($\\sin15^\\circ$, $\\cos\\frac{7\\pi}{12}$); 5) $\\sin(\\alpha\\pm\\beta)$, $\\cos(\\alpha\\pm\\beta)$ — skaičiuoti ar suprastinti; 6) $\\tg(\\alpha\\pm\\beta)$; 7) Dvigubo kampo skaitinė ($2\\sin\\alpha\\cos\\alpha$, $\\cos^2\\alpha-\\sin^2\\alpha$, $\\tg(2\\alpha)$) — atpažinti formulę; 8) Duotas $\\sin\\alpha$ / $\\cos\\alpha$ + ketvirtis — $\\sin(2\\alpha)$, $\\cos(2\\alpha)$, $\\tg(2\\alpha)$; 9) Suprastinti su dvigubo kampo formulomis; 10) Redukcija per sumą/skirtumą ($\\cos(\\pi+\\alpha)$, $\\sin(\\frac{3\\pi}{2}+\\alpha)$); 11) Tapatybės įrodymas; 12) Algebra: $\\sin^3\\alpha\\pm\\cos^3\\alpha$, $(\\sin\\alpha\\pm\\cos\\alpha)^2$; duota $\\sin\\alpha+\\cos\\alpha=m$ — rasti $\\sin\\alpha\\cos\\alpha$; 13) Išreikšti $\\sin(3\\alpha)$, $\\sin(4\\alpha)$ per $\\sin\\alpha$ (arba $\\cos$).
+
+Lengva: 1) — sveikieji koeficientai;3) klausti vienos kitos funkcijos; 7) — standartiniai kampai ($30^\\circ$, $45^\\circ$, $60^\\circ$), atpažinti formulę.
+
+Vidutinė: 1) sudėtingesni koeficientai, gali reikėti kelių pertvarkymų; 2); 3); 4); 5); 6) — su ketvirčiu ar supaprastinimas; 8); 9); 10) su mažais skaičiais;
+
+Sunki: 2), 8), 9) ir 10) - sudėtingi atvejai; 11); 12); 13)`,
+  },
+  "12:12-trigonometrija:lygtys": {
+    title: "Lygtys",
+    body: `${GRADE12_TRIG_LYGTYS_CORE}
+
+Tipai: 1) $\\sin x=a$, $\\cos x=a$, $\\tg x=a$ — lentelės reikšmės, $0$, $\\pm1$; 2) $\\sin(kx+b)=a$, $\\cos(kx+b)=a$, $\\tg(kx+b)=a$; 3) Koeficientas ($m\\sin(\\ldots)+c=0$); 4) Neigiama argumento dalis ($\\sin(-x)$, $\\cos(-x)$); 5) Sprendiniai intervale $[a;b]$ arba sprendinių skaičius intervale; 6) Nėra sprendinių ($|a|>1$, $\\cos x=\\tg x$); 7) $\\sin^2 x=a$, $\\tg^2 x=a$, $|\\tg x|=a$; 8) Skaidymas dauginamaisiais ($\\sin x(\\cos x-1)=0$); 9) Dvigubo kampo prieš skaidymą ($(1-\\cos2x)\\cos x+\\sin2x=0$); 10) Keitinys $t=\\sin x$ / $\\cos x$ / $\\tg x$ — kvadratinė; 11) Homogeninė $a\\sin x+b\\cos x=0$; 12) Tapatybių taikymas (suma/skirtumas, $\\sin^2+\\cos^2=1$, $\\frac{1}{\\cos^2}=1+\\tg^2$); 13) Trupmeninė su $\\tg$ ($2\\tg x+\\frac{1}{\\tg x}=3$) — $D$; 14) Funkcijų susikirtimas $f(x)=g(x)$; 15) Kelių dvigubo kampo taikymas ($\\sin x\\cos x\\cos2x\\cos4x=\\frac{1}{16}$).
+
+Lengva: 1) 2) 3) paprasti skaičiai 6) — atpažinti be sprendimo.
+Vidutinė: 2) 3); 4); 5) — trumpas intervalas, 1-2 sprendiniai; 6) su sprendimu prieš išvadą, kad nėra sprendinių 7) 8) — aiškus bendras dauginamasis; 9) aiškiai pastebima 10) — tiesioginė kvadratinė; 11).
+
+Sunki: 8); 9); 12) — kelios tapatybės; 13); 14); 15); 10) — tapatybė prieš keitinį; 11) pertvarkymai prieš homogeninę; 5) — sudėtingas intervalas (3-4 tinkantys sprendiniai)`,
+  },
+  "12:12-trigonometrija:nelygybes": {
+    title: "Nelygybės",
+    body: `${GRADE12_TRIG_NELYGYBES_CORE}
+
+Tipai: 1) $\\sin x<>a$; 2) $\\cos x<>a$; 3) $\\tg x<>a$; 4) $A\\sin(kx+b)+B<>0$; 5) Transformuotas argumentas ($\\cos(x-\\frac{\\pi}{3})$, $\\tg(\\frac{\\pi}{6}-2x)$); 6) $|a|>1$ — visi $\\mathbb{R}$ arba $\\varnothing$; 7) $\\sin^2 x<>a$ → $\\cos(2x)$; 8) Tapatybių taikymas (suma/skirtumas, dvigubas kampas, $\\tg$ sumos formulė); 9) Kelių žingsnių pertvarkymas ($2\\cos^2(2x)+\\sin(2x)-\\cos(4x)<1$); 10) Apibrėžimo sritis iš nelygybės po šakni / vardiklio; 11) Parametras — su kuriomis $a$, $m$ nelygybė teisinga visiems $x$ arba neturi sprendinių; 12) Sprendinių ieškojimas duotam intervale; 13) Tekstinis periodinis ($h(t)=a+b\\sin(\\ldots)+c\\cos(\\ldots)$, kada $h>k$).
+
+Lengva: 1)–4) — lentelės reikšmės; 6) - iš karto atpažįstamas;
+
+Vidutinė: 4); 5); 6) reikia pertvarkyti prieš pastebint, kad sprendinių nėra 7); 8) — viena tapatybė; 10) 12) — trumpas intervalas arti 0.
+
+Sunki: 12) ilgesnis intervalas arba šiek tiek tolimesnis nuo 0; 10) sudėtingesnis reiškinys; 11); 13); 8)–9) kombinuoti kelios tapatybės.`,
+  },
+  "12:12-isvestines:samprata-ir-ribos": {
+    title: "Samprata ir ribos",
+    body: `Nekopijuok pavyzdžių, bet sukurk kažką panašaus.
+    
+Lengva: rasti trūkio taškus racionalioje funkcijoje ($f(x)=\\frac{1}{x^4}$, $\\frac{4x+1}{x^3+6x^2}$ — vardiklis $=0$); apskaičiuoti funkcijos reikšmės pokytį $\\Delta f$, kai duota $x_0$ ir $\\Delta x$ (pvz. $f(x)=\\frac{1}{2x-1}$, $x_0=0.8$, $\\Delta x=-0.2$).
+
+Vidutinė: ištirti tolygumą taške kūrinėje funkcijoje ($$\\begin{cases} x, & x\\le -1 \\\\ x^3, & x>-1 \\end{cases}$$ ties $x=-1$) ir nubraižyti eskizą; apskaičiuoti $\\Delta f$ intervale (pvz. $f(x)=7+2x-x^2$ intervale $[-1;0.9]$).
+
+Sunki: parinkti parametrą $m$, kad kūrinė funkcija būtų tolydi visoje $\\mathbb{R}$ ($$\\begin{cases} -0.5x+2, & x\\le 1 \\\\ 2x+m, & x>1 \\end{cases}$$) ir nubraižyti eskizą; tekstinis uždavinys su pokyčiu (pvz. kubo paviršiaus ploto pokytis, kai briauna $5\\text{ cm}$ pailgėja $0.1\\text{ cm}$).`,
+  },
+  "12:12-isvestines:isvestiniu-skaiciavimas": {
+    title: "Išvestinių skaičiavimas",
+    body: `${GRADE12_ISVESTINE_SKAICIAVIMAS_CORE}
+
+Tipai: 1) $f'(x)$ — laipsninė su daugianariu; 2) Sandauga ($(4x+1)(x+1)$; 3) Dalmens taisyklė ($\\frac{x-1}{3x+2}$, $\\frac{\\ln(2x+6)}{x+3}$); 4) Suprastinti, tada $f'(x_0)$ ($(\\sqrt{x}-5)(\\sqrt{x}+5)$, $f'(6)$); 5) Išspręsti $g'(x)=f'(x)$ arba $f'(x)=g'(2)$; 9) Išspręsti $f'(x)=0$ (racionalinė, logaritminė); 10) $f'(x_0)+f(x_0)$ su neigiamais laipsniais; 11) Sudėtinė funkcija ($(5+x^3)^{13}$, $\\frac{3}{(4x-7)^5}$, $(15-4x)^6$, $\\frac{2x}{(3x+1)^4}$); 12) $e^x$, $a^x$ ($(e^x(3x^3-x+2))$, $e^{x-x^2}$, $3^x$, $7^{2x+1}$, $\\frac{x}{2^x}$); 13) Lietinė prie $e^{-x}$, $8^{-x}$, $0.5e^{-2x}$ — lygtis arba $k$; 14) $\\ln x$, $\\log_a x$ (sandauga, dalmuo, sudėtinė: $\\ln(5x)$, $\\ln^3 x$, $\\frac{\\ln(2x+6)}{x+3}$); 15) $\\tan\\alpha=f'(x_0)$ ($f(x)=\\sqrt[4]{2x-1}$, $x_0=1$); 17) Trigonometrinės: $(\\sin x)'$, $(\\cos x)'$, $(\\tg x)'$; sudėtinė ($\\cos(2x)$, $\\tg(\\frac{\\pi}{4}+x)$, $\\sin(\\frac{\\pi}{3}x)$); 18) $\\frac{\\cos x+2}{3+\\sin x}$, $\\ln x\\cdot\\sin x$; 19) Rasti $x$, kur $f'(x)=0$ ($\\sin x+\\cos x$, $\\sqrt{2}\\sin x-x$, $2\\tg x-2x$).
+
+Lengva: 1); 4), 5) su paprastom funkcijom; 10) vienas neigiamas laipsnis; 11) — linijinis vidinis ($(15-4x)^6$); 12)paprasti atvejai; 17)paprasti atvejai.
+
+Vidutinė: 2); 3); 4), 5) su sudėtingesnėm funkcijom; 9) — kvadratinė po $f'$; 10); 11); 12); 13); 14) — paprastesni atvejai; 15); 17) — sudėtingesni atvejai.
+
+Sunki: 3) - dalmuo kombinuotas su sudėtingesnėm funkcijom; 5) sudėtingi atvejai; 9) trupmeninė su $D$; 11) — sudėtingesnė; gali būti 3 funkcijos vienoje; 12) — sudėtingesni atvejai; 14) — sudėtingesni atvejai; 17) sudėtingi atvejai; 18); 19);`,
+  },
+  "12:12-isvestines:isvestiniu-pritaikymas": {
+    title: "Išvestinių pritaikymas",
+    body: `${GRADE12_ISVESTINE_SKAICIAVIMAS_CORE}
+
+Tipai: 0) Liestinė lygiagreti duotai (pvz $f(x)=x^2-6x+2$ lygiagreti $y=-2x+8$); 1) f'(x)=k=tg(alpha) taikymas; 2) Lietinės lygtis ($f(x)=2x^2+1$, $x_0=2$); 4) Vidutinis greitis intervale; 5) Momentinis greitis $v(t)=s'(t)$ taške; 6) $v(t)$ ir $a(t)$ iš $s(t)=t^3-3t^2+1$; 7) Monotonijos intervalai (daugianaris); 8) Įrodyti monotoniją visoje $\\mathbb{R}$; 9) Kritiniai taškai; 10) Ekstremumai iš grafiko / apibrėžimai; 11) $f'(x)=0$ trigonometrinė kritiniams taškams; 12) Ekstremumo taškai ir reikšmės ($2x^3-24x$; $4x^2-x^4$); 13) Monotonija + ekstremumai racionalioje ($\\frac{3x+x^2}{x-1}$, $\\frac{x^2-8x}{x+1}$); 14) Didž. / maž. reikšmė $[a;b]$ (kubinė, $\\sqrt{x^2+1}$, $\\ln x$); 15) $[a;b]$ be kritinių — tik galai ($\\frac{2}{x+1}-4$); 16) Didž. greitis intervale iš $s(t)$; 17) Optimizavimas: plotas / perimetras (stačiakampis $100\\text{ m}$ sienos); 18) Skaičiaus skaidymas — didž. sandauga ($42=a+b$, $ab^2$); 19) Stačiakampis fiksuotu ploto — min. perimetras; 20) Atviras cilindras — min. paviršius duotam tūriui; 22) Natūralus $a$ — min. $a+\\frac{4}{a^2}$; 23) Fizika: $v(t)=s'(t)$, $a(t)=v'(t)$. 
+
+Lengva: 2) tiesioginis lygties užrašymas; 4); 7); 9) — kvadratinė, kūbinė; 12); 14) — kvadratinė $[a;b]$; 17) — stačiakampis su aiškiu perimetru.
+
+Vidutinė: 0); 1); 2) sudėtingesni atvejai; 5); 6); 7) sudėtingesnių funkcijų; 8) viena funkcija; 9) sudėtingesnių funkcijų; 10); 12) — sudėtingesni atvejai, pvz. $3x^4-6x^3-1$; 13); 14) — sudėtingesni atvejai $\\sqrt{x^2+1}$ ar $\\ln x$; 15); 16);17); 18); 19); 23) greitis.
+
+Sunki: 0), 1), 6) - sunkūs atvejai 8); 9) — $\\sqrt{x^2-x}$, $2\\sin x-\\cos(2x)$; 11); 13) pilnas tyrimas; 14) — $2\\cos(0.5x)-x$ intervale;16); 20); 22);23) pagreitis; 17) su papildoma sąlyga; 18); 12) — $\\ln(3x^2-15x)$ kritiniai.`,
+  },
+  "12:12-stereometrija-3d:tieses-ir-plokstumos": {
+    title: "Tiesės ir plokštumos",
+    body: `${GRADE12_STEREOMETRIJA_CORE}
+
+Sąvokos ir teoremos: stereometrijos aksiomos; plokštumos apibrėžimas (3 nekolinearūs taškai; tiesė ir taškas ne ant jos; dvi kertančios ar lygiagrečios tiesės); prasilenkiančių tiesių požymis; tiesės ir plokštumos lygiagretumo požymis; tiesės ir plokštumos statmenumo požymis; dviejų plokštumų lygiagretumo požymis; dviejų plokštumų statmenumo požymis; trijų statmenų teorema (statmuo, pasviroji, projekcija).
+
+Kampai: kampas tarp prasilenkiančiųjų tiesių; kampas tarp pasvirosios ir plokštumos; dvisienis kampas (kampas tarp plokštumų).
+
+Atstumai: nuo taško iki tiesės; nuo taško iki plokštumos; tarp lygiagrečių tiesių; tarp prasilenkiančiųjų tiesių; tarp tiesės ir lygiagrečios plokštumos; tarp lygiagrečių plokštumų.
+
+Tipai (lygio orientacija — nekopijuoti): kubas — plokštumų sankirta, lygiagretumas, statmenumas; trijų statmenų teorema (piramidė ar rombas pagrinde — įrodyti statmenumą, rasti kraštinę); įrodyti statmenumą erdvėje; kampas tarp plokštumų (stačioji prizmė, piramidė); pasviroji ir projekcija — $\\cos$ kampo su plokštuma; kvadratas ir lygiagretainis skirtingose plokštumose — atstumas.`,
+  },
+  "12:12-stereometrija-3d:briaunainiai": {
+    title: "Briaunainiai",
+    body: `${GRADE12_STEREOMETRIJA_CORE}
+
+Kūnai: prizmė (stačioji, taisyklingoji, gretasienis, kubas); piramidė (taisyklingoji, trikampė, keturkampė, tetraedras); nupjautinė piramidė. Paviršiaus plotas — šoninio ir viso. Pjūviai: įstrižinis, lygiagretus su pagrindu. Panašumas — pjūvis lygiagrečiam su pagrindu ($k^2$ plotų santykis).
+
+Lengva: Taisyklingos, paprastos figūros, tiesioginis formulių taikymas arba papildomai nebent surasti kokią kraštinę, aukštinę ar įstrižainę su pitagoro teorema, trikampio 30,45,60 laipsnių kampų taisyklėmis.
+
+Vidutinė: pirma rasti trūkstamą matmenį ($H$ iš $S_{pav}$; kraštinę iš Pitagoro ar erdvinės įstrižainės) gali būti figūrų savybės; tada $V$ ar paviršius. Piramidė: rombas, lygiagretainis pagrinde; viena briauna statmena pagrindui ar pan. Nupjautinė piramidė — duotos kraštinės ir $H$. Prizmės sienų/briaunų/taškų skaičius ($n$-gonas). Pjūvio plotas (įstrižinis ar lygiagretusis stačiojoje prizmėje).
+
+Sunki: tūrio ar ploto skaičiavimas tik prieš tai atlikus keletą skaičiavimų naudojant pitagoro t., figūrų savybes, trigonometriją, panašumo sąvybės ar pan. Prizmė su trapecijos pagrindu + įstrižinio pjūvio plotas — $S_{pav}$, $V$, pjūvis $A_1BCD_1$. Piramidė: taisyklingasis trikampis — pjūvis per $H$ ir briauną → $S_{šon}$, $V$; lygiagretusis pjūvis → tūris didelės ar mažos piramidės (panašių figūrų tūrių savybė). Tetraedras — pjūvio per vidurio taškus perimetras. Nupjautinė piramidė — įstrižinio pjūvio plotas → $V$; $S_{šon}$, $H$ ir briaunų skirtumas → $V$. Pjūvis per vidurio taškus ($KMN$). Įrodyti ar taikyti savybes (kvadratas įstrižainės, kubo kraštinė +2 → tūrio pokytis).`,
+  },
+  "12:12-stereometrija-3d:sukiniai": {
+    title: "Sukiniai",
+    body: `${GRADE12_STEREOMETRIJA_CORE}
+
+Kūnai: ritinys; kūgis (sudaromoji $l$); nupjautinis kūgis; rutulys; sfera; rutulio nuopjova. Pjūviai: ašinis (stačiojoje prizmėje — stačiakampis; kūgyje — trikampis), lygiagretus su pagrindu. Panašumas kūnų — $k$, $k^2$ plotų, $k^3$ tūrių.
+
+Lengva: paprastos figūros, 1-3 paprasti veiksmai: formulių taikymas, pigagoro teorema, trikampio 30,45,60 laipsnių taisyklės. Jei duoti pjūviai, tada tiesioginis pjūvio ploto ar perimetro skaičiavimas.
+
+Vidutinė: ašinio pjūvio plotas arba įstrižainė ir kampas su pagrindu ($45^\\circ$, $60^\\circ$) → rasti $H$, $R$, tada $V$ ar $S$. Kūgis — $l$ ir $d$ → $H$; apsisukimo stačiakampis → pagrindo skersmuo. Santykis matmenų ($h=r+2$) ir $S_{pav}$ — rasti $S_{šon}/S_{pagr}$. Kūgis pjūvis lygiagrečiam su pagrindu — pjūvio plotas (panašumas). Rutulys pjūvis — $R$ ir atstumas nuo centro → pjūvio plotas. Nupjautinis kūgis iš trapecijos sukimosi. Kūgio ašinio pjūvio perimetras ir $H$ → $l$, $R$.
+
+Sunki: tūrio ar ploto skaičiavimas tik prieš tai atlikus keletą skaičiavimų naudojant pitagoro t., figūrų savybes, trigonometriją, figūrų panašumą ar pan.; ritinys — pjūvis lygiagretus ašiai (ne per centrą), kampas su ašimi — pjūvio plotas. Kūgis pjūvis lygiagrečiam, žinomas atstumas nuo viršūnės — pjūvio plotas arba tūrio dalys. Pjūvis lygiagrečiam — dvi tūrio dalys (mažas kūgis + nupjautinis). Panašumo koeficientas $k$ — plotai ir tūriai. Rutulio nuopjova — $V$ ir $S$ iš $R$, $H$. Kombinuotas ritinys+kūgis — tūris, svoris ($\\rho$), paviršius dengimui. Kūgis: ašinio pjūvio plotas ir santykis $V:S_{šon}$ — sistema, rasti $l$.`,
+  },
+  "12:12-tikimybes-ir-kombinatorika:rinkiniai": {
+    title: "Rinkiniai",
+    body: `${GRADE12_KOMBINATORIKA_CORE}
+
+Sąvokos: kombinatorikos sudėties taisyklė (arba); daugybos taisyklė (ir); kėliniai $P_n$; faktorialas $n!$; gretiniai $A_n^k$; deriniai $C_n^k$; Paskalio taisyklė; Niutono binomas; binominiai koeficientai. Pasirinkimas: eilės tvarka svarbi → $P_n$ ar $A_n^k$; nesvarbi → $C_n^k$.
+
+Lengva: tiesioginis $P_n$, $A_n^k$ ar $C_n^k$ (maži $n$, $k$); sudėtis ARBA daugyba atskirai (gėrimas + dydis, vienas daiktas iš grupių); faktorialo skaičiavimas $\\frac{n!}{(n-k)!}$; trumpas skaitmenų rinkinys be $0$; išskleisti $(x\\pm a)^n$ ($n\\le 5$); surašyti kelis kėlinius.
+
+Vidutinė: sudėtis ir daugyba kartu ($(m_1\\cdot m_2)+(m_3\\cdot m_4)$); žodis — bent $k$ skirtingų raidžių; skaitmenys su $0$ (pirmas $\\neq 0$); grupės kartu (SF knygos + biografijos); lygtis su $x!$; rasti $k$-tąjį ar $n$-tąjį binomo termą; skaitmenų rinkinys — lyginis, nelyginis, be pasikartojimų; derinių sandauga, suma (raudoni + žali kamuoliukai).
+
+Sunki: daugiau rinkinių (didesni skaičiai); bent $k$ skirtingų raidžių iš žodžio (suma $A_n^k$); sudėtingas skaitmenų/kodų uždavinys; rasti $n$ iš $\\sum C_n^k=2^n$ ar koeficiento; parametras binome (be $x$ terminas); sėdėjimas su apribojimais; Paskalio taikymas; derinių suma „bent 3“ ar „ne daugiau kaip 4“; rankų paspaudimai, įstrižainių skaičius, kūrybiškesni gyvenimiški uždaviniai`,
+  },
+  "12:12-tikimybes-ir-kombinatorika:tikimybes": {
+    title: "Tikimybės",
+    body: `${GRADE12_TIKIMYBE_CORE}
+
+Sąvokos: klasikinė tikimybė; būtinas įvykis $\\Omega$; negalimas $\\emptyset$; priešingas $\\bar{A}$; nepriklausomi įvykiai; nesutaikomieji; $P(A\\cup B)=P(A)+P(B)-P(A\\cap B)$; Bernulio bandymai $P_n(k)$.
+
+Lengva: tiesioginis $P=\\frac{m}{n}$ — kortelės, raidė iš žodžio, kamuoliukai iš maišo, lošimų kauliukai (klasikiniai); būtinas ar negalimas; priešingas ($P(\\bar{A})=1-P(A)$); nesutaikomieji (mėlyni ar raudoni). Tikimybės su "ir/arba".
+
+Vidutinė: nepriklausomi — $P(A\\cap B)=P(A)P(B)$ (dvi dėžės, trys lentynos); $P(A\\cup B)$ su sankirta (lankininkai); ar nesutaikomieji / nepriklausomi (duoti $P(A)$, $P(B)$, $P(A\\cup B)$); Bernulio — tiksliai $k$ kartų; kombinatorika + tikimybė (komanda 2M+2B); sugrąžinimas į dėžę - šiek tiek sudėtingesni tikimybių uždaviniai.
+
+Sunki: bent vienas ($1-P(\\bar{A}\\cap\\bar{B})$); knygos eilėje + tikimybė; loterija bent 3 iš 5; Bernulio „bent $k$“; kombinatorika (pirštinės be poros, eilėje tarp asmenų, bent du vienodi skaitmenys). Gana sudėtingi, kombinuoti tikimybių uždaviniai. Gali būti gyvenimiški.`,
+  },
+  "12:12-tikimybes-ir-kombinatorika:skirstiniai-ex-dx-ir-kt": {
+    title: "Skirstiniai, EX, DX ir kt.",
+    body: `${GRADE12_SKIRSTINIAI_CORE}
+
+Diskretus atsitiktinis dydis $X$ ir jo skirstinys ($x_i$, $p_i$). Matematinė viltis $EX$; dispersija $DX$; standartinis nuokrypis $\\sigma(X)$. Sudaryti skirstinį iš kombinatorikos (kamuoliukai, kortelės, kortelės iki trikampio ir pan.). Rasti trūkstamą $p_i$ kai $\\sum p_i=1$. Apskaičiuoti $EX$, $DX$, $\\sigma$ (suapvalinti pagal sąlygą). Normalus (Gauso) skirstinys — savybės: simetrija apie $EX$, $\\sigma$ lemia „platumą“; taikymų kontekstas be integralo skaičiavimo.`,
   },
   "8:tiesioginis-proporcingumas": {
     title: "Tiesioginis proporcingumas",
@@ -255,7 +617,7 @@ Sunki: formulės $kx+b$ nustatymas iš dviejų taškų; užduotys su parametrais
   },
   "10:10-lygciu-sistemos:lygciu-sistemu-sprendimas": {
     title: "Lygčių sistemų, kurių viena lygtis yra tiesinė, o kita - trupmeninė arba kvadratinė, sprendimas",
-    body: `Sistema: viena lygtis tiesinė ($ax+by=c$), kita — trupmeninė (su $x$ ar $y$ vardikliu) arba kvadratinė ($ax^2+bx+c=0$ arba su $x^2$, $y^2$). Nežinomieji tik $x$ ir $y$.
+    body: `Sistema: viena lygtis tiesinė ($ax+by=c$), kita — trupmeninė (su $x$ ar $y$ vardikliu) arba kvadratinė ($ax^2+bx+c=0$ arba su $x^2$, $y^2$). Nežinomieji tik $x$ ir $y$. Užrašyk $$\\begin{cases} ... \\\\ ... \\end{cases}$$ (ne \\{ su \\n).
 
 Lengva: duota sistema be teksto; viena lygtis aiškiai tiesinė, kita — paprasta kvadratinė arba racionalioji; 1–2 perkėlimai.
 
@@ -474,6 +836,24 @@ Tvarka NESVARBI (deriniai): knygų sąrašas, seminaro dalyvių parinkimas, teni
 
 Užduotys gali prašyti: surašyti visus rinkinius su ir be tvarkos; sugalvoti situaciją, kur rinkimo tvarka svarbi ar nesvarbi; pagrįsti, kur atveju tvarka svarbi (a–h tipo sąrašai); taškai $L,K,N,P,R$ — atkarpas (be tvarkos) ir vektorius (su tvarka). Kombinatorikos užduotys — skaičiuoti variantus; tikimybės — $P(A)=m/n$.`,
   },
+  "11:topic:11-vektoriai": {
+    title: "Vektoriai",
+    body: `Vektoriai koordinačių plokštumoje. VIENA užduotis = vienas tikslas; maks. 2 trumpi punktai. Jei reikia, aprašyk figūrą tekste (trikampis $ABC$, lygiagretainis $ABCD$). Žymėjimas: $\\vec{AB}$, $\\vec{a}$; koordinatės $(x;y)$.
+
+Sąvokos: lygieji, priešingieji; kolinearūs; vienakrypčiai / priešpriešiniai. Trikampio, lygiagretainio taisyklės; $\\vec{AB}-\\vec{AC}=\\vec{CB}$. veiksmai su vektoriais ir jų koordinatėmis, skaliarinė sandauga. Kampą skaičiuok, kai vektoriai iš to paties taško.
+
+Užduočių tipai (rinkis vieną):
+1) Modulis / ilgis $|\\vec{a}|$.
+2) Koordinatės vektoriaus iš taškų arba komponentės iš sąlygos. Veiksmai su koordinatėm.
+3) Kollinearumas — nustatyti ar įrodyti (proporcingumas koordinačių).
+4) Statmenumas — nustatyti ar įrodyti ($\\vec{a}\\cdot\\vec{b}=0$).
+5) Kampas $\\varphi$ tarp vektorių (per skaliarinę sandaugą).
+6) Skaliarinė sandauga — per koordinates arba per $|\\vec{a}|$, $|\\vec{b}|$, $\\cos\\varphi$ (duota $\\varphi$ arba $\\sin\\varphi$).
+7) Veiksmai su vektoriais: sudėtis, atimtis, daugyba iš skaičiaus; supaprastinti reiškinį ($2\\vec{a}-3\\vec{b}+\\vec{c}$, $k\\vec{a}+m\\vec{b}$).
+8) Išreiškimas figūroje: trikampis ar lygiagretainis — vektorius per įstrižaines, pusiaukraštines, vidurio linijas, lygiagrečias kraštines, tašką ant kraštinės ar susikirtimą; gali būti nežinomas parametras $k$ ($\\vec{AD}=k\\vec{BC}$).
+
+Gali papildomai: ar vektoriai lygieji / priešingieji / vienakrypčiai (be skaičiavimo). Sudėtingumą reguliuok per skaičius (pvz. lengvas - sveikieji, vidutinis - racionalieji, sunkus - iracionalieji), žingsnių skaičiumi ir savo nuožiūra`,
+  },
 };
 
 /** Temos be AI atsakymo generavimo metu. */
@@ -609,8 +989,10 @@ export function buildSubtopicPromptBlock(
   const seenSubtopicKeys = new Set<string>();
   const parts: string[] = [];
 
-  const isGrade10TrigonometryTopic = (topicSlug: string) =>
-    grade === 10 && topicSlug.trim().toLowerCase() === "10-trigonometrija";
+  const includeVidutineWithSunkiForTopic = (topicSlug: string) => {
+    const t = topicSlug.trim().toLowerCase();
+    return (grade === 10 && t === "10-trigonometrija") || t === "11-funkcijos";
+  };
 
   for (const topicSlug of uniqueTopicSlugs) {
     const entry = getTopicPrompt(grade, topicSlug);
@@ -629,7 +1011,7 @@ export function buildSubtopicPromptBlock(
     const entry = getSubtopicPrompt(grade, slug, topicSlug);
     if (entry) {
       const body = formatSubtopicBodyForDifficulty(entry.body, difficulty, {
-        includeVidutineWithSunki: isGrade10TrigonometryTopic(topicSlug),
+        includeVidutineWithSunki: includeVidutineWithSunkiForTopic(topicSlug),
       });
       parts.push(`POTEMĖ: ${entry.title}\n${body}`);
     }
@@ -642,11 +1024,11 @@ export function buildSubtopicPromptBlock(
     return { text: "", guided: false, omitAnswers, deferredAnswers };
   }
 
-  const trigonometry10Selected =
-    uniqueTopicSlugs.some(isGrade10TrigonometryTopic) ||
-    subtopicRefs.some((r) => isGrade10TrigonometryTopic(r.topicSlug));
+  const includeVidutineWithSunki =
+    uniqueTopicSlugs.some(includeVidutineWithSunkiForTopic) ||
+    subtopicRefs.some((r) => includeVidutineWithSunkiForTopic(r.topicSlug));
 
-  const tier = difficultyTierInstruction(difficulty, trigonometry10Selected);
+  const tier = difficultyTierInstruction(difficulty, includeVidutineWithSunki);
   const antiCopy =
     "Neatkartok pavyzdinių sąlygų iš šio aprašo — kiekvieną kartą nauji skaičiai ir formulavimas.";
   return {

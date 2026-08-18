@@ -9,7 +9,6 @@ import { IVAIRUS_MIN_TASKS, isMixedDifficulty, splitIvairusTaskCounts, splitMixe
 import { assertLoggedInWithinLimits, incrementLoggedInUsage, assertSecondaryWithinLimits, incrementSecondaryUsage, type ProfileUsage } from "./profileUsage.ts";
 import { buildSavarankiskasTopicPrompt } from "./savarankiskas.ts";
 import { solveTaskViaOpenAI } from "./solveTask.ts";
-import { solveTaskFullViaOpenAI } from "./solveTaskFull.ts";
 import { reviewTaskViaOpenAI } from "./reviewTask.ts";
 import { fixTaskLatex, type Task } from "./taskLatex.ts";
 
@@ -21,7 +20,6 @@ const corsHeaders = {
 
 interface TaskRequest {
   action?: "solve" | "review";
-  solveMode?: "answer" | "full";
   grade: number;
   taskCount: number;
   prompt: string;
@@ -29,8 +27,6 @@ interface TaskRequest {
   imageBase64?: string;
   withDiagram?: boolean;
   withGraph?: boolean;
-  /** Default false — taupo tokenus, kai sprendimų nereikia */
-  withSolution?: boolean;
   /** Generavimo režimas: pagal temą (bankas+AI) ar pagal tekstą */
   generationMode?: "topic" | "text";
   /** Pagal temą — potemių ID sąrašas */
@@ -114,7 +110,6 @@ Deno.serve(async (req: Request) => {
     const body: TaskRequest = await req.json();
     const {
       action,
-      solveMode,
       grade,
       taskCount,
       prompt,
@@ -122,7 +117,6 @@ Deno.serve(async (req: Request) => {
       imageBase64,
       withDiagram,
       withGraph,
-      withSolution,
       generationMode,
       subtopicIds,
       topicIds,
@@ -243,11 +237,7 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const mode = solveMode === "full" ? "full" : "answer";
-      const solveResult =
-        mode === "full"
-          ? await solveTaskFullViaOpenAI({ openaiKey, grade, question: q })
-          : await solveTaskViaOpenAI({ openaiKey, grade, question: q });
+      const solveResult = await solveTaskViaOpenAI({ openaiKey, grade, question: q });
       if ("error" in solveResult) {
         return new Response(
           JSON.stringify({ error: solveResult.error }),
@@ -260,16 +250,6 @@ Deno.serve(async (req: Request) => {
           supabaseAdmin,
           userProfile as ProfileUsage,
           solveCheck.period,
-        );
-      }
-
-      if (mode === "full") {
-        return new Response(
-          JSON.stringify({
-            answer: solveResult.answer,
-            solution: solveResult.solution,
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
@@ -431,7 +411,6 @@ Deno.serve(async (req: Request) => {
           prompt: topicPrompt,
           withDiagram: effectiveWithDiagram,
           withGraph: effectiveWithGraph,
-          includeSolutions: false,
           promptProfile: "topic",
           topicSubtopicGuided: subtopicGuided,
           omitAnswers: omitAiAnswers,
@@ -548,7 +527,6 @@ Deno.serve(async (req: Request) => {
       imageBase64,
       withDiagram: effectiveWithDiagram,
       withGraph: effectiveWithGraph,
-      includeSolutions: false,
       promptProfile: isImageOnly ? "image-only" : "text",
       omitAnswers: omitAiAnswers,
     });

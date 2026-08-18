@@ -1,10 +1,9 @@
 import {
-  Eye, EyeOff, BookOpen, BookX, Printer, ArrowLeft, GraduationCap,
+  Eye, EyeOff, Printer, ArrowLeft, GraduationCap,
   FileType2, Lock, AlertCircle,
 } from "lucide-react";
 import { TaskCard } from "./TaskCard";
 import type { Task, Difficulty } from "../lib/types";
-import { tasksIncludeSolutions } from "../lib/types";
 import { exportToWord } from "../lib/export";
 
 interface TasksViewProps {
@@ -12,12 +11,12 @@ interface TasksViewProps {
   grade: number;
   taskCount: number;
   showAnswers: boolean;
-  showSolutions: boolean;
+  /** Indeksai, kurių atsakymas atskleistas po antrinio generavimo / patikros */
+  autoRevealedAnswerIndices?: Set<number>;
   canEdit: boolean;
   canExport: boolean;
   canPrint: boolean;
   onToggleAnswers: () => void;
-  onToggleSolutions: () => void;
   onReset: () => void;
   onEditTask: (index: number, updated: Task) => void;
   onLockedAction: (featureName: string) => void;
@@ -28,10 +27,9 @@ interface TasksViewProps {
   sourceHint?: string;
   imageOnly?: boolean;
   generatingSecondaryIndex?: number | null;
-  generatingSecondaryMode?: "answer" | "full" | null;
+  generatingSecondaryMode?: "answer" | null;
   reviewingTaskIndex?: number | null;
   onGenerateAnswer?: (index: number, question: string) => void;
-  onGenerateSolutionAndAnswer?: (index: number, question: string) => void;
   onReviewTask?: (index: number, question: string) => void;
   error?: string | null;
   proLimitExhausted?: boolean;
@@ -44,12 +42,11 @@ export function TasksView({
   tasks,
   grade,
   showAnswers,
-  showSolutions,
+  autoRevealedAnswerIndices,
   canEdit,
   canExport,
   canPrint,
   onToggleAnswers,
-  onToggleSolutions,
   onReset,
   onEditTask,
   onLockedAction,
@@ -63,7 +60,6 @@ export function TasksView({
   generatingSecondaryMode,
   reviewingTaskIndex,
   onGenerateAnswer,
-  onGenerateSolutionAndAnswer,
   onReviewTask,
   onBankFeedback,
   onBankItemLinked,
@@ -71,8 +67,6 @@ export function TasksView({
   proLimitExhausted,
   onLimitTopUp,
 }: TasksViewProps) {
-  const hasSolutions = tasksIncludeSolutions(tasks);
-
   return (
     <div className="space-y-5">
       {/* Toolbar */}
@@ -103,20 +97,6 @@ export function TasksView({
             {showAnswers ? <Eye size={13} /> : <EyeOff size={13} />}
             {showAnswers ? "Slėpti atsakymus" : "Atsakymai"}
           </button>
-
-          {hasSolutions && (
-            <button
-              onClick={onToggleSolutions}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
-                showSolutions
-                  ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                  : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
-              }`}
-            >
-              {showSolutions ? <BookOpen size={13} /> : <BookX size={13} />}
-              {showSolutions ? "Slėpti sprendimus" : "Sprendimai"}
-            </button>
-          )}
 
           <div className="w-px h-5 bg-slate-200 mx-1" />
 
@@ -190,15 +170,13 @@ export function TasksView({
             key={i}
             task={task}
             index={i}
-            showAnswers={showAnswers}
-            showSolutions={hasSolutions && showSolutions}
+            showAnswers={showAnswers || autoRevealedAnswerIndices?.has(i) === true}
             imageOnly={imageOnly}
             generatingSecondary={
               generatingSecondaryIndex === i ? generatingSecondaryMode ?? null : null
             }
             reviewingTask={reviewingTaskIndex === i}
             onGenerateAnswer={onGenerateAnswer}
-            onGenerateSolutionAndAnswer={onGenerateSolutionAndAnswer}
             onReviewTask={onReviewTask}
             canEdit={canEdit}
             onEdit={onEditTask}

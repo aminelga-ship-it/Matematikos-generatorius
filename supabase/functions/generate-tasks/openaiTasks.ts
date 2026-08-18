@@ -9,7 +9,7 @@ import {
   type SystemPromptProfile,
 } from "./prompt.ts";
 import { diagramConfigHasRequiredData } from "./diagram.ts";
-import { fixTaskLatex, type Task } from "./taskLatex.ts";
+import { fixTaskLatex, parseAiJsonContent, type Task } from "./taskLatex.ts";
 
 export async function generateTasksViaOpenAI(params: {
   openaiKey: string;
@@ -20,7 +20,6 @@ export async function generateTasksViaOpenAI(params: {
   imageBase64?: string;
   withDiagram: boolean;
   withGraph: boolean;
-  includeSolutions: boolean;
   promptProfile?: SystemPromptProfile;
   topicSubtopicGuided?: boolean;
   omitAnswers?: boolean;
@@ -34,7 +33,6 @@ export async function generateTasksViaOpenAI(params: {
     imageBase64,
     withDiagram,
     withGraph,
-    includeSolutions,
     promptProfile: promptProfileIn,
     topicSubtopicGuided = false,
     omitAnswers = false,
@@ -48,14 +46,10 @@ export async function generateTasksViaOpenAI(params: {
     ? buildImageUserContent(taskCount, prompt, imageBase64)
     : buildUserMessage(taskCount, prompt);
 
-  const effectiveIncludeSolutions = promptProfile === "image-only" ? false : includeSolutions;
-
   const model = selectModel(grade, difficulty, withDiagram, withGraph);
   console.log("generate-tasks AI model:", model, { grade, difficulty, withDiagram, withGraph });
   const reasoning = isReasoningChatModel(model);
-  let tokenLimit = effectiveIncludeSolutions
-    ? 8000
-    : Math.min(6000, 600 + taskCount * 320);
+  let tokenLimit = Math.min(8000, 2500 + taskCount * 600);
   if (reasoning) {
     tokenLimit = Math.max(tokenLimit * 2, 12_000);
   }
@@ -71,7 +65,6 @@ export async function generateTasksViaOpenAI(params: {
           taskCount,
           withDiagram,
           withGraph,
-          effectiveIncludeSolutions,
           promptProfile,
           topicSubtopicGuided,
           omitAnswers,
@@ -108,10 +101,15 @@ export async function generateTasksViaOpenAI(params: {
 
   const aiResponse = await response.json();
   const content = aiResponse.choices?.[0]?.message?.content ?? "";
+  const finishReason = aiResponse.choices?.[0]?.finish_reason;
+
+  if (!content.trim()) {
+    console.error("Empty AI content:", { model, finishReason, usage: aiResponse.usage });
+    return { error: "Nepavyko apdoroti AI atsakymo. Bandykite dar kartą." };
+  }
 
   try {
-    const cleaned = content.replace(/^```[\w]*\n?/m, "").replace(/```[\s]*$/m, "").trim();
-    const parsed = JSON.parse(cleaned);
+    const parsed = parseAiJsonContent(content);
     let tasks: Task[] = [];
     if (Array.isArray(parsed)) {
       tasks = parsed;
@@ -133,9 +131,7 @@ export async function generateTasksViaOpenAI(params: {
         };
       }
     }
-    if (!effectiveIncludeSolutions) {
-      tasks = tasks.map((t) => ({ ...t, solution: "" }));
-    }
+    tasks = tasks.map((t) => ({ ...t, solution: "" }));
     if (omitAnswers) {
       tasks = tasks.map((t) => ({ ...t, answer: "", solution: "" }));
     }
@@ -148,8 +144,8 @@ export async function generateTasksViaOpenAI(params: {
       return { error: "AI negrąžino užduočių." };
     }
     return { tasks, model };
-  } catch {
-    console.error("Failed to parse AI response:", content);
+  } catch (err) {
+    console.error("Failed to parse AI response:", err, { model, finishReason, preview: content.slice(0, 800) });
     return { error: "Nepavyko apdoroti AI atsakymo. Bandykite dar kartą." };
   }
 }

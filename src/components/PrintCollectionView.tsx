@@ -121,7 +121,6 @@ export function PrintCollectionView({
                   task={item.task}
                   index={displayIndex >= 0 ? displayIndex : 0}
                   showAnswers={false}
-                  showSolutions={false}
                   grade={item.sessionGrade}
                   hideNumberBadge={displayIndex < 0}
                   displayNumber={displayIndex >= 0 ? displayIndex + 1 : undefined}

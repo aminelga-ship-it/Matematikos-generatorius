@@ -1,7 +1,8 @@
 import { isReasoningChatModel } from "./prompt.ts";
-import { fixTaskLatex } from "./taskLatex.ts";
+import { fixTaskLatex, parseAiJsonContent } from "./taskLatex.ts";
+import { ANSWER_ONLY_RULES } from "./solveTask.ts";
 
-export const REVIEW_TASK_MODEL = "gpt-5.4";
+export const REVIEW_TASK_MODEL = "gpt-5.6-terra";
 
 export type TaskReviewResult = {
   question: string;
@@ -28,8 +29,9 @@ export async function reviewTaskViaOpenAI(params: {
     "Sąlyga:",
     question,
     "",
-    "Patikrink ar sąlyga logiška, atsakymas normalus skaičius pagal temą ir klasę (arba yra prašymas suapvalinti), kalba, LaTeX tvarkingi. Jei reikia — pataisyk question.",
-    "Apskaičiuok teisingą atsakymą; jei sąlyga pakeista arba buvęs atsakymas neteisingas — pataisyk answer.",
+    "Patikrink užduotį kaip matematikos vadovėlio redaktorius, kad ji atitiktų pagrindinius Lietuvos BMP reikalavimus. Sąlyga turi būti logiška, nėra nereikalingų skaičių, atsakymas normalus skaičius tai klasei temai ir lygiui",
+    "(arba yra prašymas suapvalinti), gramatika ir skyryba bei LaTeX tvarkingi. Jei reikia — pataisyk question.",
+    "Apskaičiuok teisingą galutinį atsakymą (skaičiumi arba supaprastinta forma, ne formulės rinkiniu); jei sąlyga pakeista arba buvęs atsakymas neteisingas — pataisyk answer.",
     "recommendations: jei sąlyga nepakeista — tiksliai „Sąlyga tinkama“; jei pakeista — tiksliai „Pataisyta sąlyga“.",
   ].join("\n");
 
@@ -43,7 +45,7 @@ export async function reviewTaskViaOpenAI(params: {
       {
         role: "system",
         content:
-          `Matematikos užduoties tikrintojas (${params.grade} kl.). Grąžink tik JSON: {"question":"…","answer":"…","changed":true|false,"recommendations":"…"}. question — patikrinta/pataisyta sąlyga (LaTeX $...$). answer — teisingas galutinis atsakymas (su $...$), be sprendimo žingsnių. changed — true tik jei pakeitei sąlygą. recommendations — TIK vienas iš dviejų: „Sąlyga tinkama“ ARBA „Pataisyta sąlyga“. Nerašyk sprendimo ar ilgų komentarų.`,
+          `Matematikos užduoties tikrintojas (${params.grade} kl.). Grąžink tik JSON: {"question":"…","answer":"…","changed":true|false,"recommendations":"…"}. question — patikrinta/pataisyta sąlyga (LaTeX $...$). ${ANSWER_ONLY_RULES} changed — true tik jei pakeitei sąlygą. recommendations — TIK vienas iš dviejų: „Sąlyga tinkama“ ARBA „Pataisyta sąlyga“. Nerašyk sprendimo ar ilgų komentarų.`,
       },
       { role: "user", content: userMessage },
     ],
@@ -72,8 +74,7 @@ export async function reviewTaskViaOpenAI(params: {
   const content = aiResponse.choices?.[0]?.message?.content ?? "";
 
   try {
-    const cleaned = content.replace(/^```[\w]*\n?/m, "").replace(/```[\s]*$/m, "").trim();
-    const parsed = JSON.parse(cleaned) as {
+    const parsed = parseAiJsonContent(content) as {
       question?: string;
       answer?: string;
       changed?: boolean;

@@ -125,11 +125,6 @@ export interface Task {
   ai_review_notes?: string;
 }
 
-/** Ar bent vienoje užduotyje yra sugeneruotas sprendimas */
-export function tasksIncludeSolutions(tasks: Task[]): boolean {
-  return tasks.some((t) => (t.solution ?? "").trim().length > 0);
-}
-
 export interface MathSession {
   id: string;
   grade: number;

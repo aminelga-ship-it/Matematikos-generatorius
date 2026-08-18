@@ -15,7 +15,8 @@ type Segment =
 // display before inline so $$ isn't consumed by $ rule
 function parseSegments(text: string): Segment[] {
   const segments: Segment[] = [];
-  const re = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|(?<!\$)\$([^$\n]+?)\$(?!\$)|\\\(([\s\S]+?)\\\)/g;
+  const re =
+    /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|(?<!\$)\$((?:[^$]|\$(?!\$))+?)\$(?!\$)|\\\(([\s\S]+?)\\\)/g;
   let last = 0;
 
   for (const m of text.matchAll(re)) {
@@ -42,9 +43,49 @@ function escapeHtml(s: string): string {
     .replace(/>/g, "&gt;");
 }
 
-/** Išskaido sulaužytą sistemos žymėjimą į nelygybių eilutes. */
+/** Išskaido sulaužytą sistemos žymėjimą į lygčių / nelygybių eilutes. */
 function fixStrayVariableBackslash(s: string): string {
-  return s.replace(/\\([a-zA-Z])(?=[\^0-9(])/g, "$1");
+  // Tik vienas stray `\x^2`, ne LaTeX eilutės lūžis `\\ x^2`.
+  return s.replace(/(?<!\\)\\([a-zA-Z])(?=[\^0-9(])/g, "$1");
+}
+
+const SYSTEM_ROW_OP = /(?:=|>|<|\\le|\\ge|\\leq|\\geq|\\neq)/;
+
+/** `\neq` / `\nu` — LaTeX; `\nx^2` — AI eilutės lūžis, ne komanda. */
+function isLatexNCommand(afterN: string): boolean {
+  return /^(eq|u(?:[^a-zA-Z]|$)|abla|eg(?:[^a-zA-Z]|$)|otin|leq|geq|mid|i(?:[^a-zA-Z]|$)|e(?:[^a-zA-Z]|$)|sim|approx|cong|parallel|subseteq|supseteq|ull)/.test(
+    afterN,
+  );
+}
+
+/** `{ 2x+y=7, \nx^2=25 }` — `\n` čia ne LaTeX komanda. */
+function replaceNonCommandNNewlines(s: string): string {
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "\\" && s[i + 1] === "n" && !isLatexNCommand(s.slice(i + 2))) {
+      out += " \\\\ ";
+      i++;
+      continue;
+    }
+    out += s[i];
+  }
+  return out;
+}
+
+function toSystemRowBreaks(s: string): string {
+  return replaceNonCommandNNewlines(s)
+    .replace(/\n+/g, " \\\\ ")
+    .replace(/,\s*\\\\/g, " \\\\ ");
+}
+
+function stripSystemWrapper(s: string): string {
+  return s
+    .replace(/\\left\s*\\?\{/g, "")
+    .replace(/\\right\s*\.?/g, "")
+    .replace(/^(?:\\left\s*)?\\?\{\s*/, "")
+    // Ne `\end{cases}` — tik atskiras uždarantis `}`.
+    .replace(/(?<![a-zA-Z])\}\s*$/, "")
+    .trim();
 }
 
 function cleanInequalityPart(part: string): string {
@@ -54,26 +95,49 @@ function cleanInequalityPart(part: string): string {
       .replace(/\\right\s*\.?\s*$/, "")
       .replace(/^\{\s*/, "")
       .replace(/^\\\s+/, "")
+      .replace(/,\s*$/, "")
       .replace(/\.\s*$/, "")
       .trim(),
   );
 }
 
 function splitSystemInequalities(inner: string): string[] {
-  let s = inner
-    .replace(/\\left\s*\{/g, "")
-    .replace(/\\right\s*\.?/g, "")
-    .replace(/^(?:\\left\s*)?\\?\{\s*/, "")
-    .trim();
+  let s = stripSystemWrapper(inner);
   s = s.replace(/\.\s*$/, "");
-  const parts = s.split(/\s*,\s*(?:\\\\|\\\s+)?/);
+  s = toSystemRowBreaks(s);
+  const parts = /\\\\/.test(s)
+    ? s.split(/\s*\\\\\s*/)
+    : s.split(/\s*,\s*(?:\\\\|\\\s+)?/);
   return parts
     .map((p) => cleanInequalityPart(p))
-    .filter((p) => p.length > 0 && /(?:>|<|\\le|\\ge|\\leq|\\geq)/.test(p));
+    .filter((p) => p.length > 0 && SYSTEM_ROW_OP.test(p));
+}
+
+function unwrapSpuriousCases(b: string): string {
+  if (!/\\\\/.test(b) || /&/.test(b)) return b;
+  const parts = b.split(/\s*\\\\\s*/).map((p) => p.trim()).filter(Boolean);
+  if (parts.length !== 2) return b;
+
+  const [first, second] = parts;
+  if (/\\int/.test(first) && /^d[a-zA-Z]/i.test(second)) {
+    return `${first} ${second}`;
+  }
+  if (!SYSTEM_ROW_OP.test(first) && SYSTEM_ROW_OP.test(second)) {
+    if (/\\int/.test(first) || /\\right[)\]]\s*$/i.test(first)) {
+      return `${first} ${second}`;
+    }
+  }
+  return b;
+}
+
+function casesWrapperIfNeeded(repaired: string): string {
+  if (!/\\\\/.test(repaired) && !/&/.test(repaired)) return repaired;
+  return `\\begin{cases} ${repaired} \\end{cases}`;
 }
 
 function repairCasesBody(body: string): string {
-  let b = fixStrayVariableBackslash(body.trim());
+  let b = unwrapSpuriousCases(toSystemRowBreaks(body.trim()));
+  b = fixStrayVariableBackslash(b);
   b = b.replace(/\.\s*$/, "").trim();
   if (!/\\\\/.test(b)) {
     const parts = splitSystemInequalities(b);
@@ -87,7 +151,7 @@ function normalizeCasesMath(inner: string): string {
   if (/\\begin\{cases\}/.test(trimmed)) {
     return trimmed.replace(
       /\\begin\{cases\}([\s\S]*?)\\end\{cases\}/g,
-      (_, body: string) => `\\begin{cases} ${repairCasesBody(body)} \\end{cases}`,
+      (_, body: string) => casesWrapperIfNeeded(repairCasesBody(body)),
     );
   }
   const parts = splitSystemInequalities(trimmed);
@@ -97,22 +161,36 @@ function normalizeCasesMath(inner: string): string {
   return trimmed;
 }
 
-/** `{ a \\le 0, \\ b > 0` inline → display `\\begin{cases}`. */
-function normalizeInequalitySystems(text: string): string {
-  let s = text.replace(/\$\$([\s\S]+?)\$\$/g, (match, inner: string) => {
-    const norm = normalizeCasesMath(inner);
-    return norm !== inner.trim() ? `$$${norm}$$` : match;
-  });
+function wrapNormalizedSystem(inner: string, norm: string, display: boolean): string {
+  if (norm === inner.trim()) return display ? `$$${inner}$$` : `$${inner}$`;
+  if (/\\begin\{cases\}/.test(norm)) return `$$${norm}$$`;
+  return display ? `$$${norm}$$` : `$${norm}$`;
+}
 
-  s = s.replace(/(?<!\$)\$([^$\n]+)\$(?!\$)/g, (match, inner: string) => {
-    const norm = normalizeCasesMath(inner);
-    return norm !== inner.trim() ? `$${norm}$` : match;
+/** AI klaidingai cases aplink vieną lygtį / integralą — sujungti ir apvalkalą pašalinti. */
+function repairSpuriousCasesInText(text: string): string {
+  return text.replace(/\\begin\{cases\}([\s\S]*?)\\end\{cases\}/g, (_, body: string) => {
+    const fixed = casesWrapperIfNeeded(repairCasesBody(body));
+    return `$$${fixed}$$`;
   });
+}
+
+/** `{ a = 0, \\n b > 0` → display `\\begin{cases}`. */
+function normalizeInequalitySystems(text: string): string {
+  let s = repairSpuriousCasesInText(text);
+
+  s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_match, inner: string) =>
+    wrapNormalizedSystem(inner, normalizeCasesMath(inner), true),
+  );
+
+  s = s.replace(/(?<!\$)\$((?:[^$]|\$(?!\$))+?)\$(?!\$)/g, (_match, inner: string) =>
+    wrapNormalizedSystem(inner, normalizeCasesMath(inner), false),
+  );
 
   // Sulaužytas sistemos ženklas tik už $…$ ribų
   s = mapOutsideMathDelimiters(s, (plain) =>
     plain.replace(
-      /(?:\\left\s*)?\\?\{\s*([^$\n]+?(?:>|<|\\le|\\ge|\\leq|\\geq)[^$\n]*?,\s*\\?\s*[^$\n]+?(?:>|<|\\le|\\ge|\\leq|\\geq)[^$\n]*?)\.?(?=\s|$|[,.;:!?])/g,
+      /(?:\\left\s*)?\\?\{\s*([^$]+?(?:>|<|=|\\le|\\ge|\\leq|\\geq)[^$]*?,\s*(?:\\n)?\s*\\?\s*[^$]+?(?:>|<|=|\\le|\\ge|\\leq|\\geq)[^$]*?)\.?(?=\s|$|[,.;:!?])/g,
       (match, inner: string) => {
         const norm = normalizeCasesMath(inner);
         return norm !== inner.trim() ? `$$${norm}$$` : match;
@@ -123,11 +201,25 @@ function normalizeInequalitySystems(text: string): string {
   return s;
 }
 
+function repairLatexBeforeKatex(latex: string): string {
+  const trimmed = latex.trim();
+  if (/\\begin\{cases\}/.test(trimmed)) {
+    return trimmed.replace(
+      /\\begin\{cases\}([\s\S]*?)\\end\{cases\}/g,
+      (_, body: string) => casesWrapperIfNeeded(repairCasesBody(body)),
+    );
+  }
+  const withBreaks = toSystemRowBreaks(trimmed);
+  const norm = normalizeCasesMath(withBreaks);
+  return /\\begin\{cases\}/.test(norm) ? norm : withBreaks;
+}
+
 function renderKatex(latex: string, displayMode: boolean): string {
+  const fixed = repairLatexBeforeKatex(latex);
   const useDisplay =
-    displayMode || /\\begin\{(cases|matrix|pmatrix|bmatrix|vmatrix|aligned|array)/.test(latex);
+    displayMode || /\\begin\{(cases|matrix|pmatrix|bmatrix|vmatrix|aligned|array)/.test(fixed);
   try {
-    return katex.renderToString(latex, {
+    return katex.renderToString(fixed, {
       displayMode: useDisplay,
       throwOnError: false,
       strict: false,
@@ -180,7 +272,7 @@ function enrichPlainTextMath(plain: string): string {
 }
 
 function mapOutsideMathDelimiters(text: string, fn: (plain: string) => string): string {
-  const re = /(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)/g;
+  const re = /(\$\$[\s\S]+?\$\$|\$(?:[^$]|\$(?!\$))+?\$)/g;
   const parts = text.split(re);
   return parts.map((part) => (part.startsWith("$") ? part : fn(part))).join("");
 }
@@ -196,8 +288,14 @@ function collapseBrokenLatexLines(text: string): string {
     .replace(/\\\(\s*\n+\s*/g, "\\(")
     .replace(/\s*\n+\s*\\\)/g, "\\)")
     .replace(/\n[ \t]*\\\)[ \t]*(?=\n|$)/g, "\\)")
-    .replace(/\$\s*\n+\s*/g, "$")
-    .replace(/\s*\n+\s*\$/g, "$");
+    .replace(/\$([\s\S]*?)\$/g, (_match, inner: string) => {
+      const fixed = inner.replace(/\n+/g, " \\\\ ");
+      return `$${fixed}$`;
+    })
+    .replace(/\$\$([\s\S]*?)\$\$/g, (_match, inner: string) => {
+      const fixed = inner.replace(/\n+/g, " \\\\ ");
+      return `$$${fixed}$$`;
+    });
 }
 
 function normalizeLatexDelimiters(text: string): string {
@@ -300,7 +398,10 @@ export const MathText: React.FC<MathTextProps> = ({ text, className }) => {
         repairBrokenEscapes(
           normalizeDoubleBackslashes(
             normalizeUnitSuperscripts(
-              mapOutsideMathDelimiters(wrapPercentLiterals(fixSlashFractions(text)), enrichPlainTextMath),
+              mapOutsideMathDelimiters(
+                replaceNonCommandNNewlines(wrapPercentLiterals(fixSlashFractions(text))),
+                enrichPlainTextMath,
+              ),
             ),
           ),
         ),

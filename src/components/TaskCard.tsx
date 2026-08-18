@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, CheckCircle, BookOpen, Pencil, Check, X, Sparkles, Loader2, ClipboardCheck, Copy } from "lucide-react";
+import { CheckCircle, Pencil, Check, X, Sparkles, Loader2, ClipboardCheck, Copy } from "lucide-react";
 import { MathText } from "./MathText";
 import { GeometryVisualizer } from "./GeometryVisualizer";
 import { GeoGebraGraph } from './GeoGebraGraph';
@@ -13,12 +13,10 @@ interface TaskCardProps {
   task: Task;
   index: number;
   showAnswers: boolean;
-  showSolutions: boolean;
   imageOnly?: boolean;
-  generatingSecondary?: "answer" | "full" | null;
+  generatingSecondary?: "answer" | null;
   reviewingTask?: boolean;
   onGenerateAnswer?: (index: number, question: string) => void;
-  onGenerateSolutionAndAnswer?: (index: number, question: string) => void;
   onReviewTask?: (index: number, question: string) => void;
   canEdit?: boolean;
   onEdit?: (index: number, updated: Task) => void;
@@ -100,9 +98,6 @@ function splitSubParts(text: string): { label: string | null; content: string }[
     .filter((p) => p.content.length > 0);
 }
 
-function parseSolutionLines(text: string): string[] {
-  return text.split(/\n/).map((l) => l.trim()).filter(Boolean);
-}
 
 const CARD_ACCENT_COLORS = [
   "border-l-blue-500",
@@ -112,8 +107,7 @@ const CARD_ACCENT_COLORS = [
   "border-l-indigo-500",
 ];
 
-export function TaskCard({ task, index, showAnswers, showSolutions, imageOnly, generatingSecondary, reviewingTask, onGenerateAnswer, onGenerateSolutionAndAnswer, onReviewTask, canEdit, onEdit, showTeacherFeedback, grade, sessionDifficulty, topicIds, subtopicIds, onBankFeedback, onBankItemLinked, hideNumberBadge, displayNumber }: TaskCardProps) {
-  const [expanded, setExpanded] = useState(false);
+export function TaskCard({ task, index, showAnswers, imageOnly, generatingSecondary, reviewingTask, onGenerateAnswer, onReviewTask, canEdit, onEdit, showTeacherFeedback, grade, sessionDifficulty, topicIds, subtopicIds, onBankFeedback, onBankItemLinked, hideNumberBadge, displayNumber }: TaskCardProps) {
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [draftQuestion, setDraftQuestion] = useState(task.question);
@@ -123,15 +117,13 @@ export function TaskCard({ task, index, showAnswers, showSolutions, imageOnly, g
   const hasAnswerText = (task.answer ?? "").trim().length > 0;
   const hasReviewNotes = (task.ai_review_notes ?? "").trim().length > 0;
   const secondaryActions = grade
-    ? getTaskSecondaryActions(task, grade, sessionDifficulty, { imageOnly })
-    : { showReview: false, showGenerateAnswer: false, showGenerateSolutionAndAnswer: false };
+    ? getTaskSecondaryActions(task, grade, { imageOnly })
+    : { showReview: false, showGenerateAnswer: false };
 
   const showAnswerBlock = !editing && hasAnswerText && showAnswers;
   const showReviewButton = !editing && secondaryActions.showReview && onReviewTask;
   const showGenerateButton =
     !editing && secondaryActions.showGenerateAnswer && onGenerateAnswer;
-  const showGenerateSolutionButton =
-    !editing && secondaryActions.showGenerateSolutionAndAnswer && onGenerateSolutionAndAnswer;
   const aiBusy = reviewingTask || generatingSecondary != null;
 
   const hasGraph = Boolean(task.function_equation && task.function_equation.trim() !== "");
@@ -140,7 +132,6 @@ export function TaskCard({ task, index, showAnswers, showSolutions, imageOnly, g
   const accentColor = CARD_ACCENT_COLORS[index % CARD_ACCENT_COLORS.length];
   const displayQuestion = fixDiagramQuestionText(task.question, task.diagram_config);
   const subParts = splitSubParts(editing ? draftQuestion : displayQuestion);
-  const solutionLines = parseSolutionLines(task.solution);
 
   const startEdit = () => {
     setDraftQuestion(task.question);
@@ -380,7 +371,7 @@ export function TaskCard({ task, index, showAnswers, showSolutions, imageOnly, g
         )}
       </div>
 
-      {(showReviewButton || showGenerateButton || showGenerateSolutionButton) && (
+      {(showReviewButton || showGenerateButton) && (
         <div className="mx-6 mb-4 space-y-3 no-print">
           <div className="flex flex-col sm:flex-row gap-2 sm:items-start">
             {showReviewButton && (
@@ -420,27 +411,6 @@ export function TaskCard({ task, index, showAnswers, showSolutions, imageOnly, g
                 </button>
               </div>
             )}
-            {showGenerateSolutionButton && (
-              <div className="flex-1 min-w-0">
-                <button
-                  type="button"
-                  onClick={() =>
-                    onGenerateSolutionAndAnswer?.(index, task.question.trim() || displayQuestion)
-                  }
-                  disabled={aiBusy}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 transition disabled:opacity-60 w-full sm:w-auto"
-                >
-                  {generatingSecondary === "full" ? (
-                    <Loader2 size={15} className="animate-spin" />
-                  ) : (
-                    <Sparkles size={15} />
-                  )}
-                  {generatingSecondary === "full"
-                    ? "Generuojama…"
-                    : "Generuoti sprendimą ir atsakymą"}
-                </button>
-              </div>
-            )}
           </div>
 
           {hasReviewNotes && (
@@ -470,67 +440,6 @@ export function TaskCard({ task, index, showAnswers, showSolutions, imageOnly, g
         </div>
       )}
 
-      {/* Solution accordion */}
-      {showSolutions && !editing && task.solution.trim().length > 0 && (
-        <div className="task-solution-section border-t border-slate-100">
-          <button
-            onClick={() => setExpanded((p) => !p)}
-            className={`w-full flex items-center gap-2 px-6 py-3 text-sm font-medium transition-colors ${
-              expanded
-                ? "text-blue-700 bg-blue-50"
-                : "text-slate-400 hover:text-blue-600 hover:bg-slate-50"
-            }`}
-          >
-            <BookOpen size={14} />
-            <span>{expanded ? "Slėpti sprendimą" : "Rodyti sprendimą"}</span>
-            <span className="ml-auto">
-              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </span>
-          </button>
-
-          {expanded && (
-            <div className="px-6 py-5 bg-blue-50 border-t border-blue-100">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">
-                  Sprendimas
-                </span>
-                <div className="flex-1 h-px bg-blue-200" />
-              </div>
-
-              <ol className="space-y-2.5">
-                {solutionLines.map((line, i) => {
-                  const stepMatch = line.match(/^(\d+[.)]\s*|Žingsnis\s*\d+[.:]\s*)/i);
-                  const content = stepMatch ? line.slice(stepMatch[0].length) : line;
-                  const isEquation = !stepMatch && /=/.test(line) && line.length < 100;
-
-                  return (
-                    <li key={i} className="flex items-baseline gap-3">
-                      {stepMatch ? (
-                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-200 text-blue-800 text-[11px] font-bold flex items-center justify-center leading-none mt-0.5">
-                          {i + 1}
-                        </span>
-                      ) : (
-                        <span
-                          className={`flex-shrink-0 w-1.5 h-1.5 rounded-full mt-[7px] ${
-                            isEquation ? "bg-blue-500" : "bg-blue-300"
-                          }`}
-                        />
-                      )}
-                      <span
-                        className={`text-sm leading-relaxed text-blue-900 ${
-                          isEquation ? "font-medium" : ""
-                        }`}
-                      >
-                        <MathText text={content || line} />
-                      </span>
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

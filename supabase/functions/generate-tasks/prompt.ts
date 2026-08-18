@@ -86,7 +86,7 @@ export function selectModel(
     return "gpt-5.4";
   }
 
-  if (tier === "lengvos") return "gpt-4.1";
+  // 11–12: visiems lygiams gpt-5.4. gpt-4.1 lengvoms dažnai nukerpa JSON su \log / \ln.
   return "gpt-5.4";
 }
 
@@ -187,7 +187,7 @@ const LT_GEOMETRY_WORDING =
 
 function buildTerminologySection(grade: number): string {
   let base: string;
-  if (grade >= 11) base = "Terminai: pilna VBE terminologija (išvestinė, integralas…).";
+  if (grade >= 11) base = "Terminai: pilna VBE terminologija (išvestinė, integralas…). Nenaudoti: asimptotė, amplitudė.";
   else if (grade === 10) base = "Terminai: trig., log., parabolė, diskriminantas; ne išvestinė/integralas.";
   else if (grade === 9) base = "Terminai: kvadratinės lygtys, parabolė, trig. pradmenys; ne log./išvestinė.";
   else if (grade === 8) base = "Terminai: šaknis, Pitagoras, lygčių sistema, vektorius, grupavimo būdas; ne modulis, ne kvadratinės lygtys, ne trupmeniniai reiškiniai (9 kl.), ne trig./log.";
@@ -225,24 +225,62 @@ export function isImageOnlyRequest(prompt: string, hasImage: boolean): boolean {
 
 export type SystemPromptProfile = "topic" | "text" | "image-only";
 
-let staticSystemPromptCore: string | null = null;
+/** LaTeX juostos: 1–6 be sistemų, 7–10 su sistemomis, 11–12 dar ir su integralais. */
+type LatexBand = "1-6" | "7-10" | "11-12";
 
-const STATIC_LATEX_AND_JSON_RULES = `LATEX IR JSON (visos klasės):
-- Matematines išraiškas apgaub $...$ (inline) arba $$...$$ (atskira eilutė).
-- Trupmenos JSON atsakyme: VISADA \\\\frac{a}{b}, ne pasvirasis brūkšnis.
-- Kintamieji, simboliai, trig., log.: standartinis LaTeX JSON faile su dvigubu backslash (\\\\cdot, \\\\leq, \\\\sqrt, \\\\sin ir t.t.).
-- Grąžink tik JSON objektą su "tasks" masyvu — be markdown, be paaiškinimų už JSON.`;
+function latexBand(grade: number): LatexBand {
+  if (grade <= 6) return "1-6";
+  if (grade <= 10) return "7-10";
+  return "11-12";
+}
 
-function getStaticSystemPromptCore(): string {
-  if (staticSystemPromptCore) return staticSystemPromptCore;
-  staticSystemPromptCore = `LT matematikos mokytojas — užduotys lietuviškai (LT BP).
+const CASES_RULE =
+  `- Lygčių / nelygybių sistema (kelios lygtys): VISADA $$\\\\begin{cases} ... \\\\\\\\ ... \\\\end{cases}$$. DRAUDŽIAMA \\{ su kableliu ar \\n vienoje eilutėje.`;
+
+const SINGLE_EQUATION_RULE = `- Viena lygtis (su =) — NE cases.`;
+
+const INTEGRAL_RULE =
+  `- Viena lygtis (integralas, lygtis su =) — NE cases; integralui $dx$, $dt$ toje pačioje eilutėje ($\\\\int_a^b f(x)\\\\,dx=\\\\int_a^b g(x)\\\\,dx$).`;
+
+function buildLatexAndJsonRules(band: LatexBand): string {
+  const symbols =
+    band === "1-6"
+      ? `- Kintamieji ir simboliai: standartinis LaTeX JSON faile su dvigubu backslash (\\\\cdot, \\\\leq, \\\\geq ir t.t.).`
+      : `- Kintamieji, simboliai, trig., log.: standartinis LaTeX JSON faile su dvigubu backslash (\\\\cdot, \\\\leq, \\\\sqrt, \\\\sin ir t.t.).`;
+
+  const systemRules =
+    band === "1-6"
+      ? []
+      : band === "7-10"
+        ? [CASES_RULE, SINGLE_EQUATION_RULE]
+        : [CASES_RULE, INTEGRAL_RULE];
+
+  return [
+    `LATEX IR JSON:`,
+    `- Matematines išraiškas apgaub $...$ (inline) arba $$...$$ (atskira eilutė).`,
+    `- Trupmenos JSON atsakyme: VISADA \\\\frac{a}{b}, ne pasvirasis brūkšnis.`,
+    symbols,
+    ...systemRules,
+    `- Grąžink tik JSON objektą su "tasks" masyvu — be markdown, be paaiškinimų už JSON.`,
+  ].join("\n");
+}
+
+const staticSystemPromptCoreByBand = new Map<LatexBand, string>();
+
+function getStaticSystemPromptCore(grade: number): string {
+  const band = latexBand(grade);
+  const cached = staticSystemPromptCoreByBand.get(band);
+  if (cached) return cached;
+
+  const core = `LT matematikos mokytojas — užduotys lietuviškai (LT BP).
 
 Tipas: gryna matematika (lygtis/reiškinys/skaičiavimas) be teksto; tekstinį tik jei vartotojas prašo žodinės/gyvenimiškos.
 
-${STATIC_LATEX_AND_JSON_RULES}
+${buildLatexAndJsonRules(band)}
 
 answer: glaustai — tik reikšmės, dalys per ; be etikečių ir sakinių.`;
-  return staticSystemPromptCore;
+  staticSystemPromptCoreByBand.set(band, core);
+  return core;
 }
 
 function buildElementaryArithmeticSection(grade: number): string {
@@ -253,11 +291,11 @@ function buildElementaryArithmeticSection(grade: number): string {
 - Formulę galima pateikti žodžiais arba $P=4a$, bet ne įrašyti jau paruošto skaičiavimo.
 
 1–${grade} KL. SKAIČIAVIMAI (tik gryni skaičiavimai, ne žodiniai):
-- Jei užduotis prasideda „Apskaičiuokite“, „Sudėkite stulpeliu“, „Atimkite stulpeliu“ ar panašiai — PRIVALOMAS stulpelis arba kampas $$...$$ bloke question lauke (ypač kai solution tuščias).
+- Jei užduotis prasideda „Apskaičiuokite“, „Sudėkite stulpeliu“, „Atimkite stulpeliu“ ar panašiai — PRIVALOMAS stulpelis arba kampas $$...$$ bloke question lauke.
 - **Sudėtis ir atimtis** — stulpeliu ($$\\begin{array}{r}...\\end{array}$$ su + arba −).
 - **Dalyba** — DRAUDŽIAMA rašyti stulpeliu kaip sudėtį/atimtį (skaičius viršuje, apačioje „: daliklis“ po brūkšneliu). Dalybai naudok **eilutę** (pvz. „Apskaičiuokite: $48 : 6=$“) **arba dalybos kampą** $$...$$ (dalinys, daliklis, dalmuo, liekana) — ne array stulpelio formatą.
 - „Veiksmų eilutė“ — tik kai reikia skaičiuoti pagal veiksmų tvarką (skliaustai, keli veiksmai vienoje išraiškoje, pvz. $2+3\\cdot4$). Tada skaičiavimas gali būti eilutėje; answer vis tiek tik skaičius (žr. žemiau).
-- Visais kitais atvejais (sudėtis, atimtis stulpeliu; dalyba kampu): rodomas skaičiavimas $$...$$ bloke (question arba solution) — stulpeliu tik +/−; dalybai kampu (daliklis, dalinys, dalmenys, liekana) arba eilutėje $a : b =$. DRAUDŽIAMA vienoje eilutėje „23+45=68“, „156:12=13“ be stulpelio (sudėčiai/atimčiai) arba be kampo/eilutės (dalybai).
+- Visais kitais atvejais (sudėtis, atimtis stulpeliu; dalyba kampu): rodomas skaičiavimas $$...$$ bloke question — stulpeliu tik +/−; dalybai kampu (daliklis, dalinys, dalmenys, liekana) arba eilutėje $a : b =$. DRAUDŽIAMA vienoje eilutėje „23+45=68“, „156:12=13“ be stulpelio (sudėčiai/atimčiai) arba be kampo/eilutės (dalybai).
 - Stulpelio pavyzdys: $$\\begin{array}{r} 23 \\\\ + \\; 45 \\\\ \\hline 68 \\end{array}$$
 - Kampo pavyzdys: naudok $$...$$ su dalybos kampu (ne inline, ne trupmena kaip galutinis atsakymas).
 
@@ -266,12 +304,11 @@ function buildElementaryArithmeticSection(grade: number): string {
 - DRAUDŽIAMA answer: stulpelis, kampas, $$ skaičiavimo blokai, \\\\frac{}{} kaip dalmens ar trupmenos forma.
 - Dalyba su liekana: „13 liek. 3“ (pirmiausia dalmuo, tada liek.; žodis „liek.“). Be kampo ir be trupmenos.
 - DRAUDŽIAMA: $x=68$, „Atsakymas: …“, sakiniai, paaiškinimai answer lauke.
-- 1–4 kl. answer NEGALI naudoti \\\\frac — net jei bendroje instrukcijoje nurodyta trupmenų LaTeX forma (ji taikoma tik 5+ kl. answer arba trupmenų užduotims be dalybos kampo).
-- solution (jei generuojamas): stulpelis/kampas leidžiamas; answer — visada tik skaičius (+ liek. jei reikia).`;
+- 1–4 kl. answer NEGALI naudoti \\\\frac — net jei bendroje instrukcijoje nurodyta trupmenų LaTeX forma (ji taikoma tik 5+ kl. answer arba trupmenų užduotims be dalybos kampo).`;
 }
 
 function getStaticSystemPromptPrefix(withDiagram: boolean, withGraph: boolean, grade: number): string {
-  let s = getStaticSystemPromptCore();
+  let s = getStaticSystemPromptCore(grade);
   if (grade <= 4) s += buildElementaryArithmeticSection(grade);
   if (withDiagram) s += `\n\n${buildDiagramSection(grade)}`;
   if (withGraph) {
@@ -286,19 +323,17 @@ function buildVariableSystemPromptSuffix(
   taskCount: number,
   withDiagram: boolean,
   withGraph: boolean,
-  withSolution: boolean,
   _profile: SystemPromptProfile,
   topicSubtopicGuided = false,
   omitAnswers = false,
 ): string {
   const isMixed = difficulty === "savarankiskas" || difficulty === "ivairus";
   const mixCounts = isMixed ? splitMixedTaskCounts(difficulty, taskCount) : null;
-  const hardOnlySolutions = withSolution && difficulty === "ivairus" && mixCounts;
   const graphEquationRule = withGraph
     ? `Grafikas: kiekvienoje užduotyje "function_equation".`
     : `Grafikas: nebent užduotis apie funkciją.`;
 
-  const solutionField = withSolution ? `"solution":"…",` : `"solution":"",`;
+  const solutionField = `"solution":"",`;
 
   const jsonAnswerField = omitAnswers
     ? '"answer":"",'
@@ -326,17 +361,11 @@ function buildVariableSystemPromptSuffix(
     ? `Brėžinys: jei yra diagram_config — labels privalo turėti ≥2 reikšmes (duotus skaičius + "?" arba du duotus); sutampa su question. Užduotims „pagal brėžinį/duomenis brėžinyje“ — be tuščių labels.`
     : `Brėžinys: ne (diagram_config neįtrauk).`;
 
-  const solutionBlock = hardOnlySolutions
-    ? `Sprendimai: tik ${mixCounts!.sunkios} sunkioms — PRIVALOMA; likusioms "solution":"".`
-    : withSolution
-    ? grade <= 4
-      ? `Sprendimai: PRIVALOMA — skaičiavimas stulpeliu arba kampu $$...$$; answer tik skaičius (dalybai su liekana: „N liek. L“).`
-      : `Sprendimai: PRIVALOMA, glaustai. Patikrink answer.`
-    : grade <= 4
-      ? `Sprendimai: "solution"="" visur. Gryniems skaičiavimams stulpelis/kampas PRIVALOMAS question $$...$$ bloke (ne tik solution). Tekstiniame uždavinyje question be skaičiavimo veiksmų. answer — tik skaičius (+ liek. jei reikia).`
-      : omitAnswers
-        ? `Sprendimai: "solution"="" visur. answer: VISADA tuščias "" (ne generuok atsakymų — mokytojas patvirtins).`
-        : `Sprendimai: "solution"="" visur. Tik teisingas glaustas answer.`;
+  const solutionBlock = grade <= 4
+    ? `Sprendimai: "solution"="" visur. Gryniems skaičiavimams stulpelis/kampas PRIVALOMAS question $$...$$ bloke. Tekstiniame uždavinyje question be skaičiavimo veiksmų. answer — tik skaičius (+ liek. jei reikia).`
+    : omitAnswers
+      ? `Sprendimai: "solution"="" visur. answer: VISADA tuščias "" (ne generuok atsakymų — mokytojas patvirtins).`
+      : `Sprendimai: "solution"="" visur. Tik teisingas glaustas answer.`;
 
   const difficultyBlock = topicSubtopicGuided
     ? isMixed
@@ -394,7 +423,6 @@ export function buildSystemPrompt(
   taskCount: number,
   withDiagram: boolean,
   withGraph: boolean,
-  withSolution: boolean,
   profile: SystemPromptProfile = "topic",
   topicSubtopicGuided = false,
   omitAnswers = false,
@@ -410,7 +438,6 @@ export function buildSystemPrompt(
       taskCount,
       withDiagram,
       withGraph,
-      withSolution,
       profile,
       topicSubtopicGuided,
       omitAnswers,

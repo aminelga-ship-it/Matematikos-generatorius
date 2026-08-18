@@ -17,7 +17,6 @@ import {
   getRecentSessions,
   loadSession,
   solveTaskAnswer,
-  solveTaskFullAnswer,
   reviewTaskQuestion,
   ProLimitExhaustedError,
 } from "./lib/api";
@@ -50,12 +49,15 @@ export default function App() {
   const [proLimitExhausted, setProLimitExhausted] = useState(false);
   const [generationMeta, setGenerationMeta] = useState<{ bankCount: number; aiCount: number; aiModel?: string } | null>(null);
   const [generatingSecondaryIndex, setGeneratingSecondaryIndex] = useState<number | null>(null);
-  const [generatingSecondaryMode, setGeneratingSecondaryMode] = useState<"answer" | "full" | null>(null);
+  const [generatingSecondaryMode, setGeneratingSecondaryMode] = useState<"answer" | null>(null);
   const [reviewingTaskIndex, setReviewingTaskIndex] = useState<number | null>(null);
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [sessionImageOnly, setSessionImageOnly] = useState(false);
   const [showAnswers, setShowAnswers] = useState(false);
-  const [showSolutions, setShowSolutions] = useState(false);
+  /** Atsakymas rodomas iš karto po antrinio generavimo / patikros (be globalaus „Atsakymai“). */
+  const [autoRevealedAnswerIndices, setAutoRevealedAnswerIndices] = useState<Set<number>>(
+    () => new Set(),
+  );
   const [sessions, setSessions] = useState<MathSession[]>([]);
   const [printCollection, setPrintCollection] = useState<CuratedPrintItem[]>([]);
   const [printViewOpen, setPrintViewOpen] = useState(false);
@@ -163,7 +165,6 @@ export default function App() {
         imageBase64 ?? undefined,
         effectiveWithDiagram,
         effectiveWithGraph,
-        false,
         generationMode === "topic" ? subtopicIds : undefined,
         generationMode === "topic" ? topicIds : undefined,
         generationMode,
@@ -181,7 +182,7 @@ export default function App() {
       );
       setCurrentGrade(grade);
       setShowAnswers(false);
-      setShowSolutions(false);
+      setAutoRevealedAnswerIndices(new Set());
       const sessionPrompt =
         generationMode === "topic"
           ? `Pagal temą (${subtopicIds.length} potemės, ${topicIds.length} temos)`
@@ -249,7 +250,7 @@ export default function App() {
     setCurrentGrade(session.grade);
     setCurrentSessionId(session.id);
     setShowAnswers(false);
-    setShowSolutions(false);
+    setAutoRevealedAnswerIndices(new Set());
   }, []);
 
   const handleReset = useCallback(() => {
@@ -263,6 +264,7 @@ export default function App() {
     setError(null);
     setSubtopicIds([]);
     setTopicIds([]);
+    setAutoRevealedAnswerIndices(new Set());
   }, []);
 
   const handleGenerateAnswer = useCallback(async (index: number, question: string) => {
@@ -284,44 +286,10 @@ export default function App() {
         void persistSessionTasks(next);
         return next;
       });
-      void refetchProfile();
-    } catch (err) {
-      if (err instanceof ProLimitExhaustedError) {
-        setProLimitExhausted(true);
-        setError(err.message);
-      } else {
-        setProLimitExhausted(false);
-        setError(err instanceof Error ? err.message : "Nepavyko generuoti atsakymo.");
-      }
-    } finally {
-      setGeneratingSecondaryIndex(null);
-      setGeneratingSecondaryMode(null);
-    }
-  }, [currentGrade, refetchProfile, persistSessionTasks]);
-
-  const handleGenerateSolutionAndAnswer = useCallback(async (index: number, question: string) => {
-    const trimmed = question.trim();
-    if (!trimmed) {
-      setError("Užduoties tekstas tuščias — negalima generuoti sprendimo.");
-      return;
-    }
-    setGeneratingSecondaryIndex(index);
-    setGeneratingSecondaryMode("full");
-    setError(null);
-    try {
-      const result = await solveTaskFullAnswer(currentGrade, trimmed);
-      setTasks((prev) => {
-        if (!prev) return prev;
-        const next = [...prev];
-        const t = next[index];
-        if (t) {
-          next[index] = {
-            ...t,
-            answer: result.answer.trim(),
-            solution: result.solution.trim(),
-          };
-        }
-        void persistSessionTasks(next);
+      setAutoRevealedAnswerIndices((prev) => {
+        if (prev.has(index)) return prev;
+        const next = new Set(prev);
+        next.add(index);
         return next;
       });
       void refetchProfile();
@@ -331,7 +299,7 @@ export default function App() {
         setError(err.message);
       } else {
         setProLimitExhausted(false);
-        setError(err instanceof Error ? err.message : "Nepavyko generuoti sprendimo.");
+        setError(err instanceof Error ? err.message : "Nepavyko generuoti atsakymo.");
       }
     } finally {
       setGeneratingSecondaryIndex(null);
@@ -373,6 +341,14 @@ export default function App() {
         void persistSessionTasks(next);
         return next;
       });
+      if (result.answer) {
+        setAutoRevealedAnswerIndices((prev) => {
+          if (prev.has(index)) return prev;
+          const next = new Set(prev);
+          next.add(index);
+          return next;
+        });
+      }
       void refetchProfile();
     } catch (err) {
       if (err instanceof ProLimitExhaustedError) {
@@ -528,12 +504,11 @@ export default function App() {
             grade={currentGrade}
             taskCount={taskCount}
             showAnswers={showAnswers}
-            showSolutions={showSolutions}
+            autoRevealedAnswerIndices={autoRevealedAnswerIndices}
             canEdit={plan.canEditTasks || isAdmin}
             canExport={plan.canExport}
             canPrint={plan.canPrint}
             onToggleAnswers={() => setShowAnswers((p) => !p)}
-            onToggleSolutions={() => setShowSolutions((p) => !p)}
             onReset={handleReset}
             onEditTask={handleEditTask}
             onLockedAction={handleLockedAction}
@@ -558,7 +533,6 @@ export default function App() {
             generatingSecondaryMode={generatingSecondaryMode}
             reviewingTaskIndex={reviewingTaskIndex}
             onGenerateAnswer={handleGenerateAnswer}
-            onGenerateSolutionAndAnswer={handleGenerateSolutionAndAnswer}
             onReviewTask={handleReviewTask}
             onBankFeedback={handleBankFeedback}
             onBankItemLinked={handleBankItemLinked}

@@ -23,7 +23,7 @@ export function sanitizeGuideContent(content: GenerationGuideContent): Generatio
 export const DEFAULT_GENERATION_GUIDE: GenerationGuideContent = {
   pageTitle: "Kaip tinkamai generuoti užduotis?",
   pageIntro:
-    "Trumpai apie generatoriaus skiltis. Pagrindinis generavimas kuria užduotis; 7–12 kl. atsakymus ir sprendimus dažnai gaunate antriniu generavimu (žr. žemiau). Jei generuojate pagal tekstą — aprašykite turinį tiksliai; jei nenorite ilgo teksto — rinkitės „Pagal temą“.",
+    "Trumpai apie generatoriaus skiltis. Pagrindinis generavimas kuria užduotis; 7–12 kl. atsakymus dažnai gaunate antriniu generavimu (žr. žemiau). Jei generuojate pagal tekstą — aprašykite turinį tiksliai; jei nenorite ilgo teksto — rinkitės „Pagal temą“.",
   sections: [
     {
       id: "functions",
@@ -53,7 +53,7 @@ export const DEFAULT_GENERATION_GUIDE: GenerationGuideContent = {
           id: "grade",
           title: "Klasė",
           body:
-            "Pasirinkite 1–12 kl. atitinkantį mokinių amžių.\n\n1–6 kl.: AI sugeneruoja atsakymą kartu su užduotimi; jis rodomas tik paspaudus „Atsakymai“.\n7–12 kl.: pagrindinis generavimas dažniausiai be atsakymo; atsakymą ar sprendimą galite gauti antriniu generavimu (žr. skiltį „Antriniai generavimai“). Banko užduotys gali turėti paruoštą atsakymą — jis taip pat slepiamas iki „Atsakymai“.\n\n1–4 kl.: jei tai ne veiksmų eilutė, skaičiavimas stulpeliu arba dalyba kampu; atsakyme — tik skaičius (dalybai su liekana, pvz. „13 liek. 3“).",
+            "Pasirinkite 1–12 kl. atitinkantį mokinių amžių.\n\n1–6 kl.: AI sugeneruoja atsakymą kartu su užduotimi; jis rodomas tik paspaudus „Atsakymai“.\n7–12 kl.: pagrindinis generavimas be atsakymo; atsakymą galite gauti antriniu generavimu (žr. skiltį „Antriniai generavimai“). Banko užduotys gali turėti paruoštą atsakymą — slepiamas iki „Atsakymai“.\n\n1–4 kl.: jei tai ne veiksmų eilutė, skaičiavimas stulpeliu arba dalyba kampu; atsakyme — tik skaičius (dalybai su liekana, pvz. „13 liek. 3“).",
         },
         {
           id: "difficulty",
@@ -83,13 +83,13 @@ export const DEFAULT_GENERATION_GUIDE: GenerationGuideContent = {
           id: "solutions",
           title: "Antriniai generavimai",
           body:
-            "Antriniai generavimai — veiksmai po užduoties sukūrimo: „Patikrinti užduotį“, „Generuoti atsakymą“ arba „Generuoti sprendimą ir atsakymą“. Skaičiuojami atskirai nuo pagrindinių generavimų (FREE 10/mėn., PRO 80/mėn., Unlimited neriboti).\n\n7–8 kl.: patikrinti užduotį + generuoti atsakymą (jei atsakymo dar nėra).\n9–10 kl.: lengvoms ir vidutinėms — patikrinti + atsakymas; sunkioms — sprendimas ir atsakymas.\n11–12 kl.: lengvoms — patikrinti + atsakymas; vidutinėms ir sunkioms — patikrinti + sprendimas ir atsakymas.\nĮvairaus sudėtingumo rinkinyje mygtukai priklauso nuo konkrečios užduoties lygio.\n\nBanko užduotys (pagal temą) jau patikrintos — „Patikrinti užduotį“ nėra. Jei banke yra atsakymas, generavimo mygtukai nerodomi.\nNuotraukos (7–12 kl.): tik „Generuoti atsakymą“, be patikros.\n\nJei patikrinimas ar generavimas jau pateikė atsakymą, atitinkamas mygtukas dingsta.",
+            "Antriniai generavimai — veiksmai po užduoties sukūrimo: „Patikrinti užduotį“ ir „Generuoti atsakymą“. Skaičiuojami atskirai nuo pagrindinių generavimų (FREE 10/mėn., PRO 80/mėn., Unlimited neriboti).\n\n7–12 kl.: patikrinti užduotį (gali pataisyti sąlygą ir pateikti atsakymą) + generuoti atsakymą (jei atsakymo dar nėra). Visi lygiai — tik atsakymas, be sprendimo žingsnių.\n\nBanko užduotys (pagal temą) jau patikrintos — „Patikrinti užduotį“ nėra. Jei banke yra atsakymas, generavimo mygtukas nerodomas.\nNuotraukos (7–12 kl.): tik „Generuoti atsakymą“, be patikros.\n\nSugenerintas ar patikrinimo metu gautas atsakymas rodomas iš karto. Likusius atsakymus — paspaudus „Atsakymai“.",
         },
         {
           id: "after-generate",
           title: "Po generavimo",
           body:
-            "Atsakymai ir sprendimai rodomi paspaudus „Atsakymai“ / „Sprendimai“ (visos klasės vienodai). Galite spausdinti, eksportuoti į Word (PRO), redaguoti užduotis (PRO). Mokytojai ir administratoriai gali palikti feedback ir tvarkyti banką.",
+            "Atsakymai rodomi paspaudus „Atsakymai“ arba iš karto po antrinio generavimo / patikros su atsakymu. Galite spausdinti, eksportuoti į Word (PRO), redaguoti užduotis (PRO). Mokytojai ir administratoriai gali palikti feedback ir tvarkyti banką.",
         },
       ],
     },
@@ -120,7 +120,7 @@ export const DEFAULT_GENERATION_GUIDE: GenerationGuideContent = {
           id: "faq-secondary",
           title: "Kas yra antriniai generavimai?",
           body:
-            "Tai ne pagrindinis užduočių generavimas, o papildomi AI veiksmai po sukūrimo: užduoties patikra (sąlygos korekcija), atsakymo generavimas arba glaustas sprendimas su atsakymu. Taikoma 7–12 kl. sugeneruotoms užduotims (ne banko). Vienas veiksmas = vienas antrinis kreditas. Limitai: FREE 10/mėn., PRO 80/mėn., Unlimited neriboti. Matote juos antraštėje kaip „Antriniai: X/Y“.",
+            "Tai ne pagrindinis užduočių generavimas, o papildomi AI veiksmai po sukūrimo: užduoties patikra (sąlygos korekcija) ir atsakymo generavimas. Taikoma 7–12 kl. sugeneruotoms užduotims (ne banko). Vienas veiksmas = vienas antrinis kreditas. Limitai: FREE 10/mėn., PRO 80/mėn., Unlimited neriboti. Matote juos antraštėje kaip „Antriniai: X/Y“.",
         },
         {
           id: "faq-limits",

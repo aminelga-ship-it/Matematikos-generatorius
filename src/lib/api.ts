@@ -76,7 +76,6 @@ export async function generateTasks(
   imageBase64?: string,
   withDiagram?: boolean,
   withGraph?: boolean,
-  withSolution?: boolean,
   subtopicIds?: string[],
   topicIds?: string[],
   generationMode: GenerationMode = "text",
@@ -99,7 +98,6 @@ export async function generateTasks(
       imageBase64,
       withDiagram,
       withGraph,
-      withSolution: withSolution ?? false,
       ...(subtopicIds?.length ? { subtopicIds } : {}),
       ...(topicIds?.length ? { topicIds } : {}),
     }),
@@ -172,56 +170,6 @@ export async function solveTaskAnswer(grade: number, question: string): Promise<
   }
 
   return data.answer;
-}
-
-export interface TaskSolveFullResult {
-  answer: string;
-  solution: string;
-}
-
-export async function solveTaskFullAnswer(
-  grade: number,
-  question: string,
-): Promise<TaskSolveFullResult> {
-  const token = await getAccessToken();
-
-  const response = await fetch(GENERATE_TASKS_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      apikey: SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify({
-      action: "solve",
-      solveMode: "full",
-      grade,
-      taskCount: 1,
-      prompt: "",
-      difficulty: "vidutinės",
-      question,
-    }),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok || data.error) {
-    if (data.code === "pro_limit") {
-      throw new ProLimitExhaustedError(
-        typeof data.error === "string" ? data.error : PRO_LIMIT_EXHAUSTED_MESSAGE,
-      );
-    }
-    throw new Error(data.error ?? `Klaida: ${response.status}`);
-  }
-
-  if (typeof data.answer !== "string" || !data.answer.trim()) {
-    throw new Error("Nepavyko gauti atsakymo.");
-  }
-
-  return {
-    answer: data.answer.trim(),
-    solution: typeof data.solution === "string" ? data.solution.trim() : "",
-  };
 }
 
 export interface TaskReviewResult {

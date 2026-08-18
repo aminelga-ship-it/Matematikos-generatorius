@@ -12,6 +12,73 @@ export interface Task {
   task_difficulty?: "lengvos" | "vidutinės" | "sunkios";
 }
 
+const JSON_SINGLE_ESCAPES = new Set(['"', "\\", "/", "b", "f", "n", "r", "t"]);
+
+/**
+ * AI often writes LaTeX with a single backslash inside JSON strings (`\log`, `\sqrt`).
+ * `\l` / `\s` are invalid JSON escapes, so JSON.parse throws — typical for logaritminės.
+ * `\frac` parses but JSON eats `\f` as form-feed. Double the backslash when it starts a LaTeX command.
+ */
+export function repairJsonLatexEscapes(text: string): string {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]!;
+    if (!inString) {
+      if (ch === '"') inString = true;
+      out += ch;
+      continue;
+    }
+    if (escaped) {
+      out += ch;
+      escaped = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = false;
+      out += ch;
+      continue;
+    }
+    if (ch !== "\\") {
+      out += ch;
+      continue;
+    }
+    const n1 = text[i + 1];
+    if (n1 === undefined) {
+      out += "\\\\";
+      continue;
+    }
+    if (n1 === "u") {
+      if (/^[0-9a-fA-F]{4}$/.test(text.slice(i + 2, i + 6))) {
+        out += ch;
+        escaped = true;
+        continue;
+      }
+      out += "\\\\";
+      continue;
+    }
+    if (JSON_SINGLE_ESCAPES.has(n1)) {
+      const n2 = text[i + 2];
+      const latexCommand = /[a-z]/.test(n2 ?? "");
+      if (latexCommand && n1 !== "\\" && n1 !== '"' && n1 !== "/") {
+        out += "\\\\";
+        continue;
+      }
+      out += ch;
+      escaped = true;
+      continue;
+    }
+    out += "\\\\";
+  }
+  return out;
+}
+
+export function parseAiJsonContent(content: string): any {
+  const cleaned = content.replace(/^```[\w]*\n?/m, "").replace(/```[\s]*$/m, "").trim();
+  return JSON.parse(repairJsonLatexEscapes(cleaned));
+}
+
 const UNIT_SUPERSCRIPT_RE =
   /\b(cm|mm|dm|m|km|g|kg|mg|ml|l|s|min|h)\^(\d+)\b/gi;
 
@@ -35,26 +102,71 @@ export function normalizeUnitSuperscripts(text: string): string {
 }
 
 function fixLatex(text: string): string {
+  const withNewlines = text
+    .replace(/\$\$([\s\S]*?)\$\$/g, (_m, inner: string) => `$$${inner.replace(/\n+/g, " \\\\ ")}$$`)
+    .replace(/(?<!\$)\$((?:[^$]|\$(?!\$))+?)\$(?!\$)/g, (_m, inner: string) =>
+      `$${inner.replace(/\n+/g, " \\\\ ")}$`,
+    );
+
   return normalizeInequalitySystems(
-    text
-    .replace(/\u000C([a-zA-Z]+)/g, "\\f$1")
-    .replace(/\u0008([a-zA-Z]+)/g, "\\b$1")
-    .replace(/\u0009(ext\{)/g, "\\text{")
-    .replace(/\u0009(heta\b)/g, "\\theta")
-    .replace(/\u0009(imes\b)/g, "\\times")
-    .replace(/\u0009(an(?:h)?\b)/g, "\\t$1")
-    .replace(/\u0009(o\b)/g, "\\to")
-    // Double-escaped LaTeX commands (\\frac), not line breaks (\\ before variable)
-    .replace(/\\\\([a-zA-Z]{2,})/g, "\\$1")
-    .replace(/\\\\,/g, "\\,")
-    .replace(/\\\\!/g, "\\!")
-    .replace(/\\\\;/g, "\\;")
-    .replace(/\\\\:/g, "\\:"),
+    replaceNonCommandNNewlines(
+      withNewlines
+        .replace(/\u000C([a-zA-Z]+)/g, "\\f$1")
+        .replace(/\u0008([a-zA-Z]+)/g, "\\b$1")
+        .replace(/\u0009(ext\{)/g, "\\text{")
+        .replace(/\u0009(heta\b)/g, "\\theta")
+        .replace(/\u0009(imes\b)/g, "\\times")
+        .replace(/\u0009(an(?:h)?\b)/g, "\\t$1")
+        .replace(/\u0009(o\b)/g, "\\to")
+        .replace(/\\\\([a-zA-Z]{2,})/g, "\\$1")
+        .replace(/\\\\,/g, "\\,")
+        .replace(/\\\\!/g, "\\!")
+        .replace(/\\\\;/g, "\\;")
+        .replace(/\\\\:/g, "\\:"),
+    ),
   );
 }
 
 function fixStrayVariableBackslash(s: string): string {
-  return s.replace(/\\([a-zA-Z])(?=[\^0-9(])/g, "$1");
+  return s.replace(/(?<!\\)\\([a-zA-Z])(?=[\^0-9(])/g, "$1");
+}
+
+const SYSTEM_ROW_OP = /(?:=|>|<|\\le|\\ge|\\leq|\\geq|\\neq)/;
+
+/** `\neq` / `\nu` — LaTeX; `\nx^2` — AI eilutės lūžis, ne komanda. */
+function isLatexNCommand(afterN: string): boolean {
+  return /^(eq|u(?:[^a-zA-Z]|$)|abla|eg(?:[^a-zA-Z]|$)|otin|leq|geq|mid|i(?:[^a-zA-Z]|$)|e(?:[^a-zA-Z]|$)|sim|approx|cong|parallel|subseteq|supseteq|ull)/.test(
+    afterN,
+  );
+}
+
+function replaceNonCommandNNewlines(s: string): string {
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "\\" && s[i + 1] === "n" && !isLatexNCommand(s.slice(i + 2))) {
+      out += " \\\\ ";
+      i++;
+      continue;
+    }
+    out += s[i];
+  }
+  return out;
+}
+
+function toSystemRowBreaks(s: string): string {
+  return replaceNonCommandNNewlines(s)
+    .replace(/\n+/g, " \\\\ ")
+    .replace(/,\s*\\\\/g, " \\\\ ");
+}
+
+function stripSystemWrapper(s: string): string {
+  return s
+    .replace(/\\left\s*\\?\{/g, "")
+    .replace(/\\right\s*\.?/g, "")
+    .replace(/^(?:\\left\s*)?\\?\{\s*/, "")
+    // Ne `\end{cases}` — tik atskiras uždarantis `}`.
+    .replace(/(?<![a-zA-Z])\}\s*$/, "")
+    .trim();
 }
 
 function cleanInequalityPart(part: string): string {
@@ -64,26 +176,57 @@ function cleanInequalityPart(part: string): string {
       .replace(/\\right\s*\.?\s*$/, "")
       .replace(/^\{\s*/, "")
       .replace(/^\\\s+/, "")
+      .replace(/,\s*$/, "")
       .replace(/\.\s*$/, "")
       .trim(),
   );
 }
 
 function splitSystemInequalities(inner: string): string[] {
-  let s = inner
-    .replace(/\\left\s*\{/g, "")
-    .replace(/\\right\s*\.?/g, "")
-    .replace(/^(?:\\left\s*)?\\?\{\s*/, "")
-    .trim();
+  let s = stripSystemWrapper(inner);
   s = s.replace(/\.\s*$/, "");
-  const parts = s.split(/\s*,\s*(?:\\\\|\\\s+)?/);
+  s = toSystemRowBreaks(s);
+  const parts = /\\\\/.test(s)
+    ? s.split(/\s*\\\\\s*/)
+    : s.split(/\s*,\s*(?:\\\\|\\\s+)?/);
   return parts
     .map((p) => cleanInequalityPart(p))
-    .filter((p) => p.length > 0 && /(?:>|<|\\le|\\ge|\\leq|\\geq)/.test(p));
+    .filter((p) => p.length > 0 && SYSTEM_ROW_OP.test(p));
+}
+
+function unwrapSpuriousCases(b: string): string {
+  if (!/\\\\/.test(b) || /&/.test(b)) return b;
+  const parts = b.split(/\s*\\\\\s*/).map((p) => p.trim()).filter(Boolean);
+  if (parts.length !== 2) return b;
+
+  const [first, second] = parts;
+  if (/\\int/.test(first) && /^d[a-zA-Z]/i.test(second)) {
+    return `${first} ${second}`;
+  }
+  if (!SYSTEM_ROW_OP.test(first) && SYSTEM_ROW_OP.test(second)) {
+    if (/\\int/.test(first) || /\\right[)\]]\s*$/i.test(first)) {
+      return `${first} ${second}`;
+    }
+  }
+  return b;
+}
+
+function casesWrapperIfNeeded(repaired: string): string {
+  if (!/\\\\/.test(repaired) && !/&/.test(repaired)) return repaired;
+  return `\\begin{cases} ${repaired} \\end{cases}`;
+}
+
+/** AI klaidingai cases aplink vieną lygtį / integralą — sujungti ir apvalkalą pašalinti. */
+function repairSpuriousCasesInText(text: string): string {
+  return text.replace(/\\begin\{cases\}([\s\S]*?)\\end\{cases\}/g, (_, body: string) => {
+    const fixed = casesWrapperIfNeeded(repairCasesBody(body));
+    return `$$${fixed}$$`;
+  });
 }
 
 function repairCasesBody(body: string): string {
-  let b = fixStrayVariableBackslash(body.trim());
+  let b = unwrapSpuriousCases(toSystemRowBreaks(body.trim()));
+  b = fixStrayVariableBackslash(b);
   b = b.replace(/\.\s*$/, "").trim();
   if (!/\\\\/.test(b)) {
     const parts = splitSystemInequalities(b);
@@ -97,7 +240,7 @@ function normalizeCasesMath(inner: string): string {
   if (/\\begin\{cases\}/.test(trimmed)) {
     return trimmed.replace(
       /\\begin\{cases\}([\s\S]*?)\\end\{cases\}/g,
-      (_, body: string) => `\\begin{cases} ${repairCasesBody(body)} \\end{cases}`,
+      (_, body: string) => casesWrapperIfNeeded(repairCasesBody(body)),
     );
   }
   const parts = splitSystemInequalities(trimmed);
@@ -107,24 +250,30 @@ function normalizeCasesMath(inner: string): string {
   return trimmed;
 }
 
+function wrapNormalizedSystem(inner: string, norm: string, display: boolean): string {
+  if (norm === inner.trim()) return display ? `$$${inner}$$` : `$${inner}$`;
+  if (/\\begin\{cases\}/.test(norm)) return `$$${norm}$$`;
+  return display ? `$$${norm}$$` : `$${norm}$`;
+}
+
 function normalizeInequalitySystems(text: string): string {
-  let s = text.replace(/\$\$([\s\S]+?)\$\$/g, (match, inner: string) => {
-    const norm = normalizeCasesMath(inner);
-    return norm !== inner.trim() ? `$$${norm}$$` : match;
-  });
+  let s = repairSpuriousCasesInText(text);
 
-  s = s.replace(/(?<!\$)\$([^$\n]+)\$(?!\$)/g, (match, inner: string) => {
-    const norm = normalizeCasesMath(inner);
-    return norm !== inner.trim() ? `$${norm}$` : match;
-  });
+  s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_match, inner: string) =>
+    wrapNormalizedSystem(inner, normalizeCasesMath(inner), true),
+  );
 
-  const re = /(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)/g;
+  s = s.replace(/(?<!\$)\$((?:[^$]|\$(?!\$))+?)\$(?!\$)/g, (_match, inner: string) =>
+    wrapNormalizedSystem(inner, normalizeCasesMath(inner), false),
+  );
+
+  const re = /(\$\$[\s\S]+?\$\$|\$(?:[^$]|\$(?!\$))+?\$)/g;
   const parts = s.split(re);
   s = parts
     .map((part) => {
       if (part.startsWith("$")) return part;
       return part.replace(
-        /(?:\\left\s*)?\\?\{\s*([^$\n]+?(?:>|<|\\le|\\ge|\\leq|\\geq)[^$\n]*?,\s*\\?\s*[^$\n]+?(?:>|<|\\le|\\ge|\\leq|\\geq)[^$\n]*?)\.?(?=\s|$|[,.;:!?])/g,
+        /(?:\\left\s*)?\\?\{\s*([^$]+?(?:>|<|=|\\le|\\ge|\\leq|\\geq)[^$]*?,\s*(?:\\n)?\s*\\?\s*[^$]+?(?:>|<|=|\\le|\\ge|\\leq|\\geq)[^$]*?)\.?(?=\s|$|[,.;:!?])/g,
         (match, inner: string) => {
           const norm = normalizeCasesMath(inner);
           return norm !== inner.trim() ? `$$${norm}$$` : match;
