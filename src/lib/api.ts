@@ -9,7 +9,11 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const GENERATE_TASKS_URL = `${SUPABASE_URL}/functions/v1/generate-tasks`;
 const CHECKOUT_SESSION_URL = `${SUPABASE_URL}/functions/v1/create-checkout-session`;
 
-export type CheckoutPlan = "PRO mėnesinis" | "UNLIMITED mėnesinis" | "Limitų papildymas";
+export type CheckoutPlan =
+  | "PRO mėnesinis"
+  | "PRO metinis"
+  | "UNLIMITED mėnesinis"
+  | "Limitų papildymas";
 
 export class ProLimitExhaustedError extends Error {
   constructor(message = PRO_LIMIT_EXHAUSTED_MESSAGE) {

@@ -7,6 +7,7 @@ import {
   Plus,
   Calendar,
   Loader2,
+  GraduationCap,
 } from 'lucide-react';
 
 type PlanKey = 'free' | 'pro' | 'unlimited';
@@ -110,11 +111,87 @@ function resolveCurrentPlan(profilePlan: string | undefined, loggedIn: boolean):
   return 'free';
 }
 
+const ProCheckoutModal: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  checkoutLoading: CheckoutPlan | null;
+  onSelect: (plan: CheckoutPlan) => void;
+}> = ({ open, onClose, checkoutLoading, onSelect }) => {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 sm:p-8">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition"
+          aria-label="Uždaryti"
+        >
+          <X size={20} />
+        </button>
+
+        <div className="text-center mb-6">
+          <h3 className="text-xl font-bold text-slate-800">Pasirinkite PRO planą</h3>
+          <p className="text-sm text-slate-500 mt-1">Mėnesinis arba metinis — abi suteikia visas PRO funkcijas</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-5 flex flex-col">
+            <div className="p-3 rounded-xl bg-blue-100 text-blue-600 w-fit">
+              <Calendar size={22} />
+            </div>
+            <h4 className="font-semibold text-slate-800 mt-4">Mėnesinis PRO</h4>
+            <p className="text-2xl font-bold text-slate-800 mt-1">
+              6,99 € <span className="text-sm font-normal text-slate-500">/ mėn.</span>
+            </p>
+            <p className="text-sm text-slate-500 mt-2 flex-1">
+              Galioja 30 dienų nuo pirkimo. Automatiškai atsinaujina.
+            </p>
+            <button
+              type="button"
+              disabled={checkoutLoading !== null}
+              onClick={() => onSelect('PRO mėnesinis')}
+              className="mt-4 w-full px-5 py-2.5 rounded-xl font-semibold text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 transition flex items-center justify-center gap-2"
+            >
+              {checkoutLoading === 'PRO mėnesinis' ? <Loader2 size={16} className="animate-spin" /> : null}
+              Pasirinkti ir mokėti
+            </button>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5 flex flex-col">
+            <div className="p-3 rounded-xl bg-emerald-100 text-emerald-600 w-fit">
+              <GraduationCap size={22} />
+            </div>
+            <h4 className="font-semibold text-slate-800 mt-4">Metinis PRO</h4>
+            <p className="text-2xl font-bold text-slate-800 mt-1">
+              29,99 € <span className="text-sm font-normal text-slate-500">/ metai</span>
+            </p>
+            <p className="text-sm text-slate-500 mt-2 flex-1">
+              PRO mokslo metams. Planas galioja iki 2027-06-30 nepaisant nuo užsakymo dienos.
+            </p>
+            <button
+              type="button"
+              disabled={checkoutLoading !== null}
+              onClick={() => onSelect('PRO metinis')}
+              className="mt-4 w-full px-5 py-2.5 rounded-xl font-semibold text-sm bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 transition flex items-center justify-center gap-2"
+            >
+              {checkoutLoading === 'PRO metinis' ? <Loader2 size={16} className="animate-spin" /> : null}
+              Pasirinkti ir mokėti
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const PricingPage: React.FC = () => {
   const { user, profile, signInWithGoogle } = useAuth();
   const [checkoutLoading, setCheckoutLoading] = useState<CheckoutPlan | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [showProCheckout, setShowProCheckout] = useState(false);
+  const [showProModal, setShowProModal] = useState(false);
   const [showUnlimitedCheckout, setShowUnlimitedCheckout] = useState(false);
 
   const currentPlan = resolveCurrentPlan(profile?.plan, !!user);
@@ -128,7 +205,7 @@ export const PricingPage: React.FC = () => {
     }
 
     if (currentPlan === 'unlimited') return;
-    if (plan === 'PRO mėnesinis' && currentPlan === 'pro') return;
+    if ((plan === 'PRO mėnesinis' || plan === 'PRO metinis') && currentPlan === 'pro') return;
 
     setCheckoutLoading(plan);
     try {
@@ -218,15 +295,13 @@ export const PricingPage: React.FC = () => {
               ? 'Dabartinis planas'
               : currentPlan === 'unlimited'
                 ? 'Įtraukta į Unlimited'
-                : showProCheckout
-                  ? 'Slėpti'
-                  : 'Užsisakyti'
+                : 'Užsisakyti'
           }
           actionDisabled={currentPlan === 'pro' || currentPlan === 'unlimited'}
           onAction={() => {
             if (currentPlan === 'pro' || currentPlan === 'unlimited') return;
             setShowUnlimitedCheckout(false);
-            setShowProCheckout((v) => !v);
+            setShowProModal(true);
           }}
         />
 
@@ -249,37 +324,18 @@ export const PricingPage: React.FC = () => {
           actionDisabled={currentPlan === 'unlimited'}
           onAction={() => {
             if (currentPlan === 'unlimited') return;
-            setShowProCheckout(false);
+            setShowProModal(false);
             setShowUnlimitedCheckout((v) => !v);
           }}
         />
       </div>
 
-      {showProCheckout && currentPlan !== 'pro' && currentPlan !== 'unlimited' && (
-        <div className="mt-8 max-w-xl mx-auto">
-          <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-6 flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="p-3 rounded-xl bg-blue-100 text-blue-600 flex-shrink-0">
-              <Calendar size={22} />
-            </div>
-            <div className="flex-1">
-              <h4 className="font-semibold text-slate-800">Mėnesinis PRO</h4>
-              <p className="text-2xl font-bold text-slate-800 mt-1">
-                6,99 € <span className="text-sm font-normal text-slate-500">/ mėn.</span>
-              </p>
-              <p className="text-sm text-slate-500 mt-1">Galioja 30 dienų nuo pirkimo. Automatiškai atsinaujina.</p>
-            </div>
-            <button
-              type="button"
-              disabled={checkoutLoading !== null}
-              onClick={() => startCheckout('PRO mėnesinis')}
-              className="flex-shrink-0 px-5 py-2.5 rounded-xl font-semibold text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 transition flex items-center justify-center gap-2"
-            >
-              {checkoutLoading === 'PRO mėnesinis' ? <Loader2 size={16} className="animate-spin" /> : null}
-              Pasirinkti ir mokėti
-            </button>
-          </div>
-        </div>
-      )}
+      <ProCheckoutModal
+        open={showProModal && currentPlan !== 'pro' && currentPlan !== 'unlimited'}
+        onClose={() => setShowProModal(false)}
+        checkoutLoading={checkoutLoading}
+        onSelect={(plan) => void startCheckout(plan)}
+      />
 
       {showUnlimitedCheckout && currentPlan !== 'unlimited' && (
         <div className="mt-8 max-w-xl mx-auto">

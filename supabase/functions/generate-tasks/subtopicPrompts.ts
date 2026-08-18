@@ -491,7 +491,7 @@ Sunki: bent vienas ($1-P(\\bar{A}\\cap\\bar{B})$); knygos eilėje + tikimybė; l
     title: "Skirstiniai, EX, DX ir kt.",
     body: `${GRADE12_SKIRSTINIAI_CORE}
 
-Diskretus atsitiktinis dydis $X$ ir jo skirstinys ($x_i$, $p_i$). Matematinė viltis $EX$; dispersija $DX$; standartinis nuokrypis $\\sigma(X)$. Sudaryti skirstinį iš kombinatorikos (kamuoliukai, kortelės, kortelės iki trikampio ir pan.). Rasti trūkstamą $p_i$ kai $\\sum p_i=1$. Apskaičiuoti $EX$, $DX$, $\\sigma$ (suapvalinti pagal sąlygą). Normalus (Gauso) skirstinys — savybės: simetrija apie $EX$, $\\sigma$ lemia „platumą“; taikymų kontekstas be integralo skaičiavimo.`,
+Galimos sąlygos (ne visos, o 1-2 vienoje užduotyje): diskretus atsitiktinis dydis $X$ ir jo skirstinys ($x_i$, $p_i$). Matematinė viltis $EX$; dispersija $DX$; standartinis nuokrypis $\\sigma(X)$. Sudaryti skirstinį iš kombinatorikos (kamuoliukai, kortelės, kortelės iki trikampio ir pan.). Rasti trūkstamą $p_i$ kai $\\sum p_i=1$. Apskaičiuoti $EX$, $DX$, $\\sigma$ (suapvalinti pagal sąlygą). Normalus (Gauso) skirstinys — savybės: simetrija apie $EX$, $\\sigma$ lemia „platumą“; taikymų kontekstas be integralo skaičiavimo.`,
   },
   "8:tiesioginis-proporcingumas": {
     title: "Tiesioginis proporcingumas",

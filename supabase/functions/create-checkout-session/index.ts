@@ -7,10 +7,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-type PlanType = "PRO mėnesinis" | "UNLIMITED mėnesinis" | "Limitų papildymas";
+type PlanType = "PRO mėnesinis" | "PRO metinis" | "UNLIMITED mėnesinis" | "Limitų papildymas";
 
 const PLAN_PRICE_MAP: Record<PlanType, string> = {
   "PRO mėnesinis": "PRICE_MONTHLY",
+  "PRO metinis": "PRICE_YEARLY",
   "UNLIMITED mėnesinis": "PRICE_UNLIMITED_MONTHLY",
   "Limitų papildymas": "PRICE_EXTRA_COINS",
 };
@@ -84,7 +85,7 @@ Deno.serve(async (req: Request) => {
 
     if (!plan || !(plan in PLAN_PRICE_MAP)) {
       return new Response(
-        JSON.stringify({ error: "Neteisingas planas. Galimi: „PRO mėnesinis“, „UNLIMITED mėnesinis“, „Limitų papildymas“." }),
+        JSON.stringify({ error: "Neteisingas planas. Galimi: „PRO mėnesinis“, „PRO metinis“, „UNLIMITED mėnesinis“, „Limitų papildymas“." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
