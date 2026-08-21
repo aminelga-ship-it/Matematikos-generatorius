@@ -92,8 +92,12 @@ export default function App() {
   const goToGuide = useCallback(() => setView((v) => (v === 'guide' ? 'app' : 'guide')), []);
 
   useEffect(() => {
+    if (!user) {
+      setSessions([]);
+      return;
+    }
     getRecentSessions().then(setSessions);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

@@ -245,9 +245,16 @@ export async function saveSession(
   topicIds?: string[],
   subtopicIds?: string[],
 ): Promise<MathSession | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.error("Failed to save session: not logged in");
+    return null;
+  }
+
   const { data, error } = await supabase
     .from("math_sessions")
     .insert({
+      user_id: user.id,
       grade,
       task_count: taskCount,
       prompt,
