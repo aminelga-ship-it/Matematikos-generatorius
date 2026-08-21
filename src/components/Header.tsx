@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { PLAN_LIMITS } from '../lib/planLimits';
 import { Crown, Tag, Loader2, Mail, LogIn, Shield, HelpCircle, Pi } from 'lucide-react';
 
 function Logo() {
@@ -53,7 +54,10 @@ function profileUsageLabel(profile: {
   tasks_month?: number;
   usage_month?: string | null;
   secondary_month?: number;
-}): { primary: string; secondary: string } {
+  bonus_requests?: number;
+  bonus_tasks?: number;
+  bonus_secondary?: number;
+}): { primary: string; secondary: string; bonus?: string } {
   const today = usageDayKey();
   const month = usageMonthKey();
   const reqToday = profile.usage_day === today ? (profile.requests_today ?? 0) : 0;
@@ -78,14 +82,22 @@ function profileUsageLabel(profile: {
   }
 
   if (profile.plan === "pro") {
+    const bonusReq = profile.bonus_requests ?? 0;
+    const bonusTasks = profile.bonus_tasks ?? 0;
+    const bonusSec = profile.bonus_secondary ?? 0;
+    const hasBonus = bonusReq > 0 || bonusTasks > 0 || bonusSec > 0;
+
     return {
-      primary: `Užklausos: ${reqMonth}/100 (mėn.)`,
-      secondary: `Antriniai: ${secondaryMonth}/80 · Užduotys: ${tasksMonth}/300`,
+      primary: `Užklausos: ${reqMonth}/${PLAN_LIMITS.pro.maxRequestsPerMonth} (mėn.)`,
+      secondary: `Antriniai: ${secondaryMonth}/${PLAN_LIMITS.pro.maxSecondaryPerMonth} · Užduotys: ${tasksMonth}/${PLAN_LIMITS.pro.maxTasksPerMonth}`,
+      bonus: hasBonus
+        ? `Papildomi: ${bonusReq} užklausos · ${bonusTasks} užduotys · ${bonusSec} antriniai`
+        : undefined,
     };
   }
   return {
-    primary: `Šiandien: ${reqToday}/3`,
-    secondary: `Mėnuo: ${reqMonth}/10 · Antriniai: ${secondaryMonth}/10`,
+    primary: `Šiandien: ${reqToday}/${PLAN_LIMITS.free.maxRequestsPerDay}`,
+    secondary: `Mėnuo: ${reqMonth}/${PLAN_LIMITS.free.maxRequestsPerMonth} · Antriniai: ${secondaryMonth}/${PLAN_LIMITS.free.maxSecondaryPerMonth}`,
   };
 }
 
@@ -315,6 +327,12 @@ export const Header: React.FC<{
                         <span>{u.primary}</span>
                         <span className="text-gray-300">|</span>
                         <span>{u.secondary}</span>
+                        {u.bonus && (
+                          <>
+                            <span className="text-gray-300">|</span>
+                            <span className="text-amber-700 font-medium">{u.bonus}</span>
+                          </>
+                        )}
                       </>
                     );
                   })()}

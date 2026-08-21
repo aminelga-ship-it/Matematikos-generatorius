@@ -9,6 +9,7 @@ import {
   Loader2,
   GraduationCap,
 } from 'lucide-react';
+import { EXTRA_LIMITS_FEATURES, EXTRA_LIMITS_PACKAGE } from '../lib/planLimits';
 
 type PlanKey = 'free' | 'pro' | 'unlimited';
 
@@ -104,9 +105,13 @@ const PlanCard: React.FC<{
   );
 };
 
-function resolveCurrentPlan(profilePlan: string | undefined, loggedIn: boolean): PlanKey | null {
+function resolveCurrentPlan(
+  profilePlan: string | undefined,
+  role: string | null | undefined,
+  loggedIn: boolean,
+): PlanKey | null {
   if (!loggedIn) return null;
-  if (profilePlan === 'unlimited') return 'unlimited';
+  if (role === 'admin' || profilePlan === 'unlimited') return 'unlimited';
   if (profilePlan === 'pro') return 'pro';
   return 'free';
 }
@@ -187,14 +192,14 @@ const ProCheckoutModal: React.FC<{
   );
 };
 
-export const PricingPage: React.FC = () => {
+export const PricingPage: React.FC<{ paymentSuccess?: boolean }> = ({ paymentSuccess }) => {
   const { user, profile, signInWithGoogle } = useAuth();
   const [checkoutLoading, setCheckoutLoading] = useState<CheckoutPlan | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [showProModal, setShowProModal] = useState(false);
   const [showUnlimitedCheckout, setShowUnlimitedCheckout] = useState(false);
 
-  const currentPlan = resolveCurrentPlan(profile?.plan, !!user);
+  const currentPlan = resolveCurrentPlan(profile?.plan, profile?.role, !!user);
 
   const startCheckout = useCallback(async (plan: CheckoutPlan) => {
     setCheckoutError(null);
@@ -204,8 +209,16 @@ export const PricingPage: React.FC = () => {
       return;
     }
 
-    if (currentPlan === 'unlimited') return;
-    if ((plan === 'PRO mėnesinis' || plan === 'PRO metinis') && currentPlan === 'pro') return;
+    if (plan === 'Limitų papildymas') {
+      if (currentPlan !== 'pro') {
+        setCheckoutError('Papildomus limitus gali įsigyti tik PRO plano vartotojai.');
+        return;
+      }
+    } else if (currentPlan === 'unlimited') {
+      return;
+    } else if ((plan === 'PRO mėnesinis' || plan === 'PRO metinis') && currentPlan === 'pro') {
+      return;
+    }
 
     setCheckoutLoading(plan);
     try {
@@ -262,6 +275,12 @@ export const PricingPage: React.FC = () => {
         </div>
       )}
 
+      {paymentSuccess && (
+        <div className="mt-6 max-w-2xl mx-auto px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm text-emerald-800 text-center">
+          Mokėjimas sėkmingas! Jūsų planas netrukus bus aktyvuotas.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
         <PlanCard
           name="FREE"
@@ -275,7 +294,7 @@ export const PricingPage: React.FC = () => {
               ? 'Prisijungti'
               : currentPlan === 'free'
                 ? 'Dabartinis planas'
-                : 'Dabartinis planas'
+                : 'Nemokamas planas'
           }
           actionDisabled={!!user}
           onAction={!user ? () => void signInWithGoogle() : undefined}
@@ -364,22 +383,62 @@ export const PricingPage: React.FC = () => {
       )}
 
       <div id="limit-topup" className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/50 p-6 scroll-mt-24">
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <div className="p-3 rounded-xl bg-amber-100 text-amber-600 flex-shrink-0">
+        <div className="flex flex-col lg:flex-row lg:items-start gap-5">
+          <div className="p-3 rounded-xl bg-amber-100 text-amber-600 flex-shrink-0 w-fit">
             <Plus size={22} />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h4 className="font-semibold text-slate-800">Papildomas limitų paketas</h4>
-            <p className="text-sm text-slate-600 mt-1">
+            <p className="text-2xl font-bold text-slate-800 mt-1">
+              {EXTRA_LIMITS_PACKAGE.priceEur} €{' '}
+              <span className="text-sm font-normal text-slate-500">vienkartinis</span>
+            </p>
+            <p className="text-sm text-slate-600 mt-2">
               Pasibaigus PRO mėnesiniams limitams galite įsigyti papildomą paketą. Likę kreditai perkeliami į kitą mėnesį.
             </p>
+            <ul className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {EXTRA_LIMITS_FEATURES.map((feature) => (
+                <li
+                  key={feature}
+                  className="flex items-center gap-2 text-sm font-medium text-amber-900 bg-amber-100/70 border border-amber-200/80 rounded-xl px-3 py-2"
+                >
+                  <Check size={16} className="text-amber-600 flex-shrink-0" />
+                  {feature}
+                </li>
+              ))}
+            </ul>
+            {currentPlan === 'pro' && profile && (
+              (profile.bonus_requests ?? 0) > 0 ||
+              (profile.bonus_tasks ?? 0) > 0 ||
+              (profile.bonus_secondary ?? 0) > 0
+            ) && (
+              <p className="mt-3 text-sm text-amber-800 bg-amber-100/60 border border-amber-200 rounded-xl px-3 py-2">
+                Jūsų papildomi kreditai:{' '}
+                <strong>{profile.bonus_requests ?? 0}</strong> užklausų,{' '}
+                <strong>{profile.bonus_tasks ?? 0}</strong> užduočių,{' '}
+                <strong>{profile.bonus_secondary ?? 0}</strong> antrinių.
+              </p>
+            )}
           </div>
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 lg:pt-1">
             <button
-              disabled
-              className="px-5 py-2.5 rounded-xl font-semibold text-sm bg-amber-200 text-amber-700 cursor-not-allowed"
+              type="button"
+              disabled={checkoutLoading !== null || (!!user && currentPlan !== 'pro')}
+              onClick={() => {
+                if (!user) {
+                  void signInWithGoogle();
+                  return;
+                }
+                void startCheckout('Limitų papildymas');
+              }}
+              className="px-5 py-2.5 rounded-xl font-semibold text-sm bg-amber-500 text-white hover:bg-amber-600 disabled:bg-amber-200 disabled:text-amber-700 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 min-w-[9rem]"
             >
-              Jau greitai
+              {checkoutLoading === 'Limitų papildymas' ? <Loader2 size={16} className="animate-spin" /> : null}
+              {!user
+                ? 'Prisijungti'
+                : currentPlan !== 'pro'
+                  ? 'Tik PRO'
+                  : 'Pirkti'}
             </button>
           </div>
         </div>

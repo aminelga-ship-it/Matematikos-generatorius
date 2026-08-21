@@ -104,6 +104,18 @@ Deno.serve(async (req: Request) => {
       .eq("id", user.id)
       .single();
     userProfile = profile;
+
+    if (
+      userProfile?.plan_expires_at &&
+      !userProfile.stripe_subscription_id &&
+      userProfile.plan !== "free"
+    ) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (userProfile.plan_expires_at < today) {
+        await supabaseAdmin.from("profiles").update({ plan: "free" }).eq("id", user.id);
+        userProfile = { ...userProfile, plan: "free" };
+      }
+    }
   }
 
   try {

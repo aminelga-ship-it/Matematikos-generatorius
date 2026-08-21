@@ -72,6 +72,7 @@ export default function App() {
   const [subtopicIds, setSubtopicIds] = useState<string[]>([]);
   const [topicIds, setTopicIds] = useState<string[]>([]);
   const [showRolePicker, setShowRolePicker] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   useEffect(() => {
     if (user && profile && profile.role == null) {
@@ -100,17 +101,28 @@ export default function App() {
       setView("pricing");
     }
 
+    if (params.get("payment") === "success") {
+      setPaymentSuccess(true);
+      setView("pricing");
+      void refetchProfile();
+    }
+
     const hasAuthCallback =
       params.has("code") ||
       window.location.hash.includes("access_token") ||
       params.has("error_description");
 
-    if (!hasAuthCallback) return;
+    if (!hasAuthCallback && params.get("payment") !== "success" && params.get("view") !== "pricing") {
+      return;
+    }
 
-    void supabase.auth.getSession().finally(() => {
-      window.history.replaceState({}, "", "/");
-    });
-  }, []);
+    if (hasAuthCallback || params.get("payment") === "success" || params.get("view") === "pricing") {
+      const cleanPath = params.get("view") === "pricing" ? "/?view=pricing" : "/";
+      void supabase.auth.getSession().finally(() => {
+        window.history.replaceState({}, "", cleanPath);
+      });
+    }
+  }, [refetchProfile]);
 
   const persistSessionTasks = useCallback(
     async (updatedTasks: Task[]) => {
@@ -485,7 +497,7 @@ export default function App() {
         {view === 'admin' && isAdmin ? (
           <AdminBankPage onBack={() => setView('app')} />
         ) : view === 'pricing' ? (
-          <PricingPage />
+          <PricingPage paymentSuccess={paymentSuccess} />
         ) : view === 'guide' ? (
           <GuidePage isAdmin={isAdmin} />
         ) : printViewOpen ? (

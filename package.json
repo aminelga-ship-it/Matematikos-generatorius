@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "deploy:functions": "supabase functions deploy generate-tasks && supabase functions deploy create-checkout-session",
+    "deploy:functions": "supabase functions deploy generate-tasks && supabase functions deploy create-checkout-session && supabase functions deploy stripe-webhook",
+    "deploy:stripe-secrets": "powershell -ExecutionPolicy Bypass -File scripts/set-stripe-secrets.ps1",
     "db:push": "supabase db push"
   },
   "dependencies": {

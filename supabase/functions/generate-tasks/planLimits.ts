@@ -18,6 +18,13 @@ export const PLAN_LIMITS = {
   },
 } as const;
 
+/** Papildomo limitų paketo (6,99 €) kreditai — turi sutapti su PricingPage. */
+export const EXTRA_LIMITS_PACKAGE = {
+  bonusRequests: 50,
+  bonusTasks: 150,
+  bonusSecondary: 40,
+} as const;
+
 export function currentUsageDay(d = new Date()): string {
   return d.toISOString().slice(0, 10);
 }

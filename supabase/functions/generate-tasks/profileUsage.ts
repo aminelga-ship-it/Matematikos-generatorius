@@ -16,6 +16,9 @@ export type ProfileUsage = {
   tasks_month?: number | null;
   usage_month?: string | null;
   secondary_month?: number | null;
+  bonus_requests?: number | null;
+  bonus_tasks?: number | null;
+  bonus_secondary?: number | null;
 };
 
 function normalizePeriodCounters(profile: ProfileUsage): {
@@ -62,20 +65,31 @@ export function assertLoggedInWithinLimits(
     if (taskCount > PLAN_LIMITS.pro.maxTasksPerGeneration) {
       return { ok: false, error: "Vienu metu galite generuoti ne daugiau nei 15 užduočių." };
     }
-    if (period.requestsMonth >= PLAN_LIMITS.pro.maxRequestsPerMonth) {
+
+    const bonusRequests = profile.bonus_requests ?? 0;
+    const bonusTasks = profile.bonus_tasks ?? 0;
+    const baseReqLimit = PLAN_LIMITS.pro.maxRequestsPerMonth;
+    const baseTaskLimit = PLAN_LIMITS.pro.maxTasksPerMonth;
+
+    if (period.requestsMonth >= baseReqLimit && bonusRequests < 1) {
       return {
         ok: false,
         error: PRO_LIMIT_EXHAUSTED_MESSAGE,
         code: "pro_limit",
       };
     }
-    if (period.tasksMonth + taskCount > PLAN_LIMITS.pro.maxTasksPerMonth) {
-      return {
-        ok: false,
-        error: PRO_LIMIT_EXHAUSTED_MESSAGE,
-        code: "pro_limit",
-      };
+
+    if (period.tasksMonth + taskCount > baseTaskLimit) {
+      const overflow = period.tasksMonth + taskCount - baseTaskLimit;
+      if (bonusTasks < overflow) {
+        return {
+          ok: false,
+          error: PRO_LIMIT_EXHAUSTED_MESSAGE,
+          code: "pro_limit",
+        };
+      }
     }
+
     return { ok: true, period };
   }
 
@@ -111,18 +125,35 @@ export async function incrementLoggedInUsage(
   const nextMonthReq = period.requestsMonth + 1;
   const nextMonthTasks = period.tasksMonth + taskCount;
 
-  await supabaseAdmin
-    .from("profiles")
-    .update({
-      used_requests: (profile.used_requests ?? 0) + 1,
-      used_tasks: (profile.used_tasks ?? 0) + taskCount,
-      requests_today: nextToday,
-      usage_day: period.usageDay,
-      requests_month: nextMonthReq,
-      tasks_month: nextMonthTasks,
-      usage_month: period.usageMonth,
-    })
-    .eq("id", profile.id);
+  const update: Record<string, unknown> = {
+    used_requests: (profile.used_requests ?? 0) + 1,
+    used_tasks: (profile.used_tasks ?? 0) + taskCount,
+    requests_today: nextToday,
+    usage_day: period.usageDay,
+    requests_month: nextMonthReq,
+    tasks_month: nextMonthTasks,
+    usage_month: period.usageMonth,
+  };
+
+  if (profile.plan === "pro") {
+    const baseReqLimit = PLAN_LIMITS.pro.maxRequestsPerMonth;
+    const baseTaskLimit = PLAN_LIMITS.pro.maxTasksPerMonth;
+    let bonusRequests = profile.bonus_requests ?? 0;
+    let bonusTasks = profile.bonus_tasks ?? 0;
+
+    if (period.requestsMonth >= baseReqLimit) {
+      bonusRequests = Math.max(0, bonusRequests - 1);
+    }
+    if (period.tasksMonth + taskCount > baseTaskLimit) {
+      const overflow = period.tasksMonth + taskCount - baseTaskLimit;
+      bonusTasks = Math.max(0, bonusTasks - overflow);
+    }
+
+    update.bonus_requests = bonusRequests;
+    update.bonus_tasks = bonusTasks;
+  }
+
+  await supabaseAdmin.from("profiles").update(update).eq("id", profile.id);
 }
 
 export function assertSecondaryWithinLimits(
@@ -142,6 +173,9 @@ export function assertSecondaryWithinLimits(
       : PLAN_LIMITS.free.maxSecondaryPerMonth;
 
   if (period.secondaryMonth >= limit) {
+    if (profile.plan === "pro" && (profile.bonus_secondary ?? 0) >= 1) {
+      return { ok: true, period };
+    }
     return {
       ok: false,
       error: PRO_LIMIT_EXHAUSTED_MESSAGE,
@@ -159,11 +193,17 @@ export async function incrementSecondaryUsage(
 ): Promise<void> {
   const nextSecondary = period.secondaryMonth + 1;
 
-  await supabaseAdmin
-    .from("profiles")
-    .update({
-      secondary_month: nextSecondary,
-      usage_month: period.usageMonth,
-    })
-    .eq("id", profile.id);
+  const update: Record<string, unknown> = {
+    secondary_month: nextSecondary,
+    usage_month: period.usageMonth,
+  };
+
+  if (
+    profile.plan === "pro" &&
+    period.secondaryMonth >= PLAN_LIMITS.pro.maxSecondaryPerMonth
+  ) {
+    update.bonus_secondary = Math.max(0, (profile.bonus_secondary ?? 0) - 1);
+  }
+
+  await supabaseAdmin.from("profiles").update(update).eq("id", profile.id);
 }
